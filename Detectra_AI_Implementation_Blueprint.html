@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detectra AI — Production Implementation Blueprint</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0b0e13;
+    --bg2: #111520;
+    --bg3: #161b26;
+    --border: #1e2535;
+    --border2: #2a3347;
+    --accent: #00e5a0;
+    --accent2: #0077ff;
+    --accent3: #ff6b35;
+    --accent4: #a855f7;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* ─── HEADER ─── */
+  .hero {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 40px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,229,160,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.25);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .hero-badge::before { content: '●'; font-size: 8px; }
+  h1 {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  h1 span { color: var(--accent); }
+  .hero-sub {
+    font-size: 14px;
+    color: var(--text2);
+    max-width: 680px;
+    margin-bottom: 28px;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 20px;
+  }
+  .meta-item {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .meta-item span { color: var(--text2); }
+
+  /* ─── LAYOUT ─── */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 200px);
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 28px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    padding: 0 20px 10px;
+  }
+  .sidebar a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 20px;
+    color: var(--text3);
+    text-decoration: none;
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,229,160,0.05); }
+  .sidebar-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    min-width: 20px;
+  }
+
+  /* ─── CONTENT ─── */
+  .content { padding: 40px 48px 80px; max-width: 900px; }
+
+  /* ─── SECTIONS ─── */
+  .section { margin-bottom: 64px; }
+  .section-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 3px;
+    padding: 3px 8px;
+    white-space: nowrap;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    margin: 24px 0 12px;
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent2);
+    font-family: var(--mono);
+    margin: 20px 0 8px;
+  }
+  p { color: var(--text2); margin-bottom: 12px; }
+
+  /* ─── COMPONENT BLOCKS ─── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .arch-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .arch-card.green::before { background: var(--accent); }
+  .arch-card.blue::before { background: var(--accent2); }
+  .arch-card.orange::before { background: var(--accent3); }
+  .arch-card.purple::before { background: var(--accent4); }
+  .arch-card.red::before { background: #ef4444; }
+  .arch-card.cyan::before { background: #06b6d4; }
+  .arch-card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .arch-card p { font-size: 12px; color: var(--text3); margin: 0; }
+
+  /* ─── PIPELINE STEP ─── */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 16px 0 24px;
+  }
+  .pipe-step {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 16px;
+    position: relative;
+  }
+  .pipe-step:not(:last-child) .pipe-line {
+    position: absolute;
+    left: 13px; top: 36px; bottom: 0;
+    width: 1px;
+    background: var(--border2);
+  }
+  .pipe-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    flex-shrink: 0;
+    z-index: 1;
+    position: relative;
+  }
+  .pipe-body { padding-bottom: 28px; }
+  .pipe-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 4px;
+    margin-top: 4px;
+  }
+  .pipe-detail { font-size: 12px; color: var(--text3); }
+  .pipe-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    background: var(--bg3);
+  }
+  .tag.green { border-color: rgba(0,229,160,0.3); color: var(--accent); background: rgba(0,229,160,0.05); }
+  .tag.blue  { border-color: rgba(0,119,255,0.3); color: #60a5fa; background: rgba(0,119,255,0.05); }
+  .tag.orange{ border-color: rgba(255,107,53,0.3); color: #fb923c; background: rgba(255,107,53,0.05); }
+  .tag.purple{ border-color: rgba(168,85,247,0.3); color: #c084fc; background: rgba(168,85,247,0.05); }
+
+  /* ─── PHASE TABLE ─── */
+  .phase-block {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .phase-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  .phase-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .phase-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+  }
+  .phase-body { padding: 16px 18px; }
+  .phase-row {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .phase-row:last-child { border-bottom: none; }
+  .phase-task { font-size: 12px; color: var(--text); font-weight: 500; }
+  .phase-desc { font-size: 12px; color: var(--text3); }
+  .phase-dur {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  /* ─── TECH STACK TABLE ─── */
+  .tech-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .tech-table th {
+    text-align: left;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+  }
+  .tech-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    vertical-align: top;
+  }
+  .tech-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .tech-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .tech-cat { color: var(--text3); font-size: 11px; }
+  .tech-why { color: var(--text2); }
+
+  /* ─── AGENT CARD ─── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .agent-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .agent-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .agent-role { font-size: 12px; color: var(--text2); margin-bottom: 10px; }
+  .agent-inputs, .agent-outputs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin-top: 8px;
+  }
+  .io-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    display: flex; gap: 12px;
+    border: 1px solid;
+  }
+  .callout.warn {
+    background: rgba(255,107,53,0.06);
+    border-color: rgba(255,107,53,0.2);
+  }
+  .callout.info {
+    background: rgba(0,119,255,0.06);
+    border-color: rgba(0,119,255,0.2);
+  }
+  .callout.tip {
+    background: rgba(0,229,160,0.06);
+    border-color: rgba(0,229,160,0.2);
+  }
+  .callout-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .callout p { color: var(--text2); font-size: 12px; margin: 0; }
+  .callout strong { color: var(--text); }
+
+  /* ─── CODE BLOCK ─── */
+  pre {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text2);
+    margin: 12px 0;
+  }
+  code { font-family: var(--mono); font-size: 11px; color: var(--accent); background: rgba(0,229,160,0.07); padding: 1px 5px; border-radius: 3px; }
+
+  /* ─── RISK TABLE ─── */
+  .risk-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 130px 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .risk-label { font-size: 12px; font-weight: 500; color: var(--text); }
+  .risk-sev {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-top: 4px;
+    display: inline-block;
+  }
+  .risk-sev.high { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .risk-sev.med  { background: rgba(255,107,53,0.12); color: #fb923c; border: 1px solid rgba(255,107,53,0.2); }
+  .risk-problem  { font-size: 12px; color: var(--text3); }
+  .risk-solution { font-size: 12px; color: var(--text2); }
+
+  /* ─── CAPABILITY TABLE ─── */
+  .cap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .cap-col {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cap-col-header {
+    padding: 10px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .cap-col.can .cap-col-header { color: var(--accent); background: rgba(0,229,160,0.05); }
+  .cap-col.cannot .cap-col-header { color: #f87171; background: rgba(239,68,68,0.04); }
+  .cap-list { padding: 12px 16px; list-style: none; }
+  .cap-list li {
+    font-size: 12px;
+    color: var(--text2);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .cap-list li:last-child { border-bottom: none; }
+  .cap-list li::before {
+    font-size: 10px;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .can .cap-list li::before { content: '✓'; color: var(--accent); }
+  .cannot .cap-list li::before { content: '✗'; color: #f87171; }
+
+  /* ─── DATA FLOW ARROW ─── */
+  .flow-row {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 0;
+    margin: 16px 0;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .flow-node {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 14px;
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+
+  /* ─── DATASET TABLE ─── */
+  .ds-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .ds-table th {
+    text-align: left; padding: 8px 12px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--text3);
+  }
+  .ds-table td { padding: 9px 12px; border: 1px solid var(--border); font-size: 12px; vertical-align: top; }
+  .ds-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ─── PERF METRIC ─── */
+  .metric-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+  }
+  .metric-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px; text-align: center;
+  }
+  .metric-val {
+    font-family: var(--mono); font-size: 22px; font-weight: 600;
+    color: var(--accent); margin-bottom: 4px;
+  }
+  .metric-label { font-size: 11px; color: var(--text3); }
+
+  ul.plain { list-style: none; padding: 0; }
+  ul.plain li {
+    font-size: 12px; color: var(--text2);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  ul.plain li:last-child { border-bottom: none; }
+  ul.plain li::before { content: '—'; color: var(--accent); flex-shrink: 0; }
+
+  .divider {
+    border: none; border-top: 1px solid var(--border);
+    margin: 32px 0;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .arch-grid, .agent-grid, .cap-grid, .metric-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Production Implementation Blueprint</div>
+  <h1>Detectra <span>AI</span></h1>
+  <p class="hero-sub">A complete, production-level implementation plan for an intelligent surveillance system with real-time multimodal video analysis, temporal reasoning, and context-aware decision making.</p>
+  <div class="meta-row">
+    <div class="meta-item">Project <span>BSAI Final Year Project · UCP Group ACT-6</span></div>
+    <div class="meta-item">Advisor <span>Mr. Usman Aamer</span></div>
+    <div class="meta-item">Phase <span>1 of 2 Semesters</span></div>
+    <div class="meta-item">Stack <span>Python · PyTorch · FastAPI · Next.js · Redis</span></div>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-label">Sections</div>
+  <a href="#s1"><span class="sidebar-num">01</span> System Architecture</a>
+  <a href="#s2"><span class="sidebar-num">02</span> AI Pipeline Design</a>
+  <a href="#s3"><span class="sidebar-num">03</span> Implementation Plan</a>
+  <a href="#s4"><span class="sidebar-num">04</span> Tech Stack</a>
+  <a href="#s5"><span class="sidebar-num">05</span> Multi-Agent Design</a>
+  <a href="#s6"><span class="sidebar-num">06</span> Dataset &amp; Training</a>
+  <a href="#s7"><span class="sidebar-num">07</span> Deployment Strategy</a>
+  <a href="#s8"><span class="sidebar-num">08</span> Optimization</a>
+  <a href="#s9"><span class="sidebar-num">09</span> Risks &amp; Mitigations</a>
+  <a href="#s10"><span class="sidebar-num">10</span> Final Capabilities</a>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="content">
+
+<!-- ════════════════════════════════════════
+     SECTION 1: SYSTEM ARCHITECTURE
+════════════════════════════════════════ -->
+<div class="section" id="s1">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>System Architecture</h2>
+  </div>
+
+  <h3>High-Level Architecture Overview</h3>
+  <p>Detectra AI is structured as a 6-layer production architecture with clear boundaries between ingestion, processing, intelligence, reasoning, storage, and presentation. All layers communicate via async message queues to achieve non-blocking, scalable throughput.</p>
+
+  <div class="arch-grid">
+    <div class="arch-card green">
+      <div class="arch-card-title">Layer 1 · Ingestion</div>
+      <p>RTSP stream reader, video file uploader, frame extractor, audio splitter. Entry point for all video data.</p>
+    </div>
+    <div class="arch-card blue">
+      <div class="arch-card-title">Layer 2 · Preprocessing</div>
+      <p>Frame normalization, resizing, denoising, optical flow, audio resampling &amp; spectrogram generation.</p>
+    </div>
+    <div class="arch-card orange">
+      <div class="arch-card-title">Layer 3 · Perception</div>
+      <p>Object detection, logo recognition, face/pose detection, action recognition, speech-to-text, environmental audio.</p>
+    </div>
+    <div class="arch-card purple">
+      <div class="arch-card-title">Layer 4 · Reasoning</div>
+      <p>Multimodal fusion engine (transformer), temporal event sequencing, context inference, story/scene understanding.</p>
+    </div>
+    <div class="arch-card red">
+      <div class="arch-card-title">Layer 5 · Storage</div>
+      <p>PostgreSQL for metadata, Redis for live event stream, S3-compatible blob for video/thumbnails, TimescaleDB for time-series events.</p>
+    </div>
+    <div class="arch-card cyan">
+      <div class="arch-card-title">Layer 6 · API + UI</div>
+      <p>FastAPI REST + WebSocket gateway, Next.js dashboard, real-time timeline, alert engine, report export.</p>
+    </div>
+  </div>
+
+  <h3>Component Responsibilities</h3>
+  <table class="tech-table">
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Responsibility</th>
+        <th>Technology</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tech-name">StreamIngester</span></td>
+        <td class="tech-why">Opens RTSP/HTTP streams via OpenCV or FFmpeg, extracts frames at configurable FPS (default 5fps for analysis, 25fps passthrough), buffers into async queue.</td>
+        <td class="tech-cat">OpenCV · FFmpeg · asyncio</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">FrameRouter</span></td>
+        <td class="tech-why">Dispatches frames to parallel GPU workers. Load balances across available CUDA devices. Drops frames if queue saturated (priority: keyframes).</td>
+        <td class="tech-cat">Redis Streams · Celery</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">PerceptionHub</span></td>
+        <td class="tech-why">Orchestrates parallel calls to 5 independent inference workers: Detector, Tracker, ActionNet, LogoNet, AudioNet. Each is an isolated microprocess.</td>
+        <td class="tech-cat">PyTorch · ONNX Runtime</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">FusionEngine</span></td>
+        <td class="tech-why">Consumes per-frame perception outputs, aligns temporal timestamps, runs cross-modal transformer to produce fused scene embeddings per 2-second window.</td>
+        <td class="tech-cat">HuggingFace Transformers</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">ContextReasoner</span></td>
+        <td class="tech-why">Sliding-window event buffer (30s). Detects anomaly patterns, generates natural-language scene descriptions, triggers alert conditions.</td>
+        <td class="tech-cat">LLaMA / Mistral fine-tuned</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">AlertAgent</span></td>
+        <td class="tech-why">Rule engine + ML anomaly scorer. Fires webhooks, stores alert events, sends WebSocket push to dashboard in &lt;500ms.</td>
+        <td class="tech-cat">FastAPI WebSocket · Celery Beat</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">TimelineDB</span></td>
+        <td class="tech-why">Writes all timestamped events (detections, actions, audio, alerts) into TimescaleDB hypertables for fast range queries used by dashboard.</td>
+        <td class="tech-cat">TimescaleDB · SQLAlchemy</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">DashboardAPI</span></td>
+        <td class="tech-why">FastAPI REST + WebSocket. Serves timeline queries, live event push, report generation, camera management, user auth (JWT).</td>
+        <td class="tech-cat">FastAPI · Pydantic v2</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Data Flow (Step-by-Step)</h3>
+  <div class="flow-row">
+    <span class="flow-node">RTSP / MP4</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">StreamIngester</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">FrameQueue (Redis)</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">PerceptionHub</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">FusionEngine</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">ContextReasoner</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">TimelineDB + AlertAgent</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-node">Dashboard WebSocket</span>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <p><strong>Audio is parallel, not sequential.</strong> The audio pipeline branches from the ingester simultaneously with the visual pipeline. Both streams converge at FusionEngine with a shared timestamp index. This is critical for correct AV synchronization in the fusion model.</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 2: AI PIPELINE DESIGN
+════════════════════════════════════════ -->
+<div class="section" id="s2">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>AI Pipeline Design</h2>
+  </div>
+
+  <h3>Complete Video Intelligence Pipeline</h3>
+
+  <div class="pipeline">
+
+    <div class="pipe-step">
+      <div class="pipe-dot">1</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Video Input &amp; Stream Handling</div>
+        <div class="pipe-detail">OpenCV/FFmpeg opens RTSP stream or file. Frames extracted at 5fps for inference (25fps for smooth playback stored separately). Audio extracted as 16kHz mono PCM. Concurrent streams handled via asyncio + thread pool. Frame timestamps embedded as metadata from presentation timestamp (PTS).</div>
+        <div class="pipe-tags">
+          <span class="tag green">OpenCV VideoCapture</span>
+          <span class="tag">FFmpeg subprocess</span>
+          <span class="tag blue">asyncio.Queue</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">2</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Preprocessing</div>
+        <div class="pipe-detail">Frames: resize to 640×640 (letterboxed), normalize to [0,1], CLAHE contrast enhancement for low-light. Optical flow (Farneback) computed between consecutive frames to provide motion priors. Audio: VAD (Voice Activity Detection) with Silero, spectrogram via Librosa (mel-spectrogram, 128 bins, 2048 FFT).</div>
+        <div class="pipe-tags">
+          <span class="tag">Albumentations</span>
+          <span class="tag orange">Librosa</span>
+          <span class="tag">Silero VAD</span>
+          <span class="tag green">CLAHE (cv2)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">3</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Object Detection + Logo Recognition</div>
+        <div class="pipe-detail">YOLOv8x for general object detection (80 COCO classes + custom person subclasses). RT-DETR as fallback for crowded scenes where YOLO NMS fails. Logo recognition uses a ViT-B/16 classification head fine-tuned on OpenLogos-32 + custom surveillance-specific logos. Confidence threshold: 0.45 for detection, 0.70 for logo. Non-Maximum Suppression via Torchvision.</div>
+        <div class="pipe-tags">
+          <span class="tag green">YOLOv8x (Ultralytics)</span>
+          <span class="tag blue">RT-DETR</span>
+          <span class="tag purple">ViT-B/16</span>
+          <span class="tag">OpenLogos-32</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">4</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Multi-Object Tracking</div>
+        <div class="pipe-detail">ByteTrack for robust ID assignment across frames (handles occlusion and re-ID). Each tracked person assigned a persistent integer ID for the session. Track states: Active / Lost / Removed. Re-identification uses appearance features from ReID model (OSNet) to recover lost tracks. Track history buffers last 150 bounding boxes per ID for trajectory analysis.</div>
+        <div class="pipe-tags">
+          <span class="tag green">ByteTrack</span>
+          <span class="tag blue">OSNet ReID</span>
+          <span class="tag">Kalman Filter</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">5</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Action Recognition</div>
+        <div class="pipe-detail">Two-stage: (a) Pose estimation via YOLOv8-Pose → keypoint sequences fed into PoseFormer for action classification over a 16-frame sliding window. (b) SlowFast network for coarse action categories (walking, running, fighting, loitering, gathering) over 8-frame clips. Actions bound to tracker IDs. Temporal fusion: actions carry a duration estimate (start_frame, end_frame, confidence). Custom fine-tuning on HMDB51 + NTU RGB+D for surveillance-relevant classes.</div>
+        <div class="pipe-tags">
+          <span class="tag green">YOLOv8-Pose</span>
+          <span class="tag blue">PoseFormer</span>
+          <span class="tag purple">SlowFast (R50)</span>
+          <span class="tag">HMDB51</span>
+          <span class="tag orange">NTU RGB+D</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">6</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Audio Intelligence</div>
+        <div class="pipe-detail">Speech-to-text: OpenAI Whisper (medium model, runs locally via whisper.cpp for speed). Segments of 30s processed with 5s overlap. Environmental sound: PANNs (Pretrained Audio Neural Networks) on AudioSet-20K — classifies 527 sound events. Key classes for surveillance: glass breaking, gunshot, screaming, crowd noise, vehicle. Results timestamped and merged with video timeline.</div>
+        <div class="pipe-tags">
+          <span class="tag green">Whisper Medium (local)</span>
+          <span class="tag blue">PANNs / CNN14</span>
+          <span class="tag">AudioSet-20K</span>
+          <span class="tag orange">whisper.cpp</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">7</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Multimodal Fusion Engine</div>
+        <div class="pipe-detail">Temporal window of 2 seconds. Inputs: per-frame detection embeddings (YOLOv8 backbone features), action class logits, audio event probabilities, optical flow magnitude. A 4-head cross-attention transformer aligns modalities using synchronized timestamp as positional encoding. Output: a 512-dim fused scene embedding per window, plus a joint event descriptor JSON (objects present, actions occurring, sounds detected, confidence scores).</div>
+        <div class="pipe-tags">
+          <span class="tag green">Cross-Attention Transformer</span>
+          <span class="tag blue">HuggingFace BERT backbone</span>
+          <span class="tag purple">Temporal Positional Encoding</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">8</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Context Understanding &amp; Story Inference</div>
+        <div class="pipe-detail">A sliding 30-second event buffer feeds a fine-tuned language model (Mistral-7B-Instruct or LLaMA-3-8B via llama.cpp). The LLM receives a structured prompt: {scene_description + timeline_of_events} → generates: (1) natural-language scene summary, (2) anomaly score [0–1], (3) intent classification (benign / suspicious / urgent), (4) recommended action. This is the "story layer" — it synthesizes what happened, not just what was detected.</div>
+        <div class="pipe-tags">
+          <span class="tag green">Mistral-7B-Instruct (4-bit GGUF)</span>
+          <span class="tag blue">llama.cpp</span>
+          <span class="tag purple">Structured Prompt Engineering</span>
+          <span class="tag orange">Anomaly Scoring</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipe-step">
+      <div class="pipe-dot">9</div>
+      <div class="pipe-line"></div>
+      <div class="pipe-body">
+        <div class="pipe-title">Output: Events, Alerts, Timeline</div>
+        <div class="pipe-detail">All timestamped events written to TimescaleDB. Alert conditions (anomaly_score &gt; 0.75, specific actions detected) trigger the AlertAgent which pushes WebSocket messages to the dashboard in &lt;500ms. Reports generated as JSON (structured), PDF (rendered), and CSV (tabular) on demand. Dashboard shows interactive timeline with event markers, bounding box replay, and LLM-generated summaries per segment.</div>
+        <div class="pipe-tags">
+          <span class="tag green">TimescaleDB hypertable</span>
+          <span class="tag blue">WebSocket push</span>
+          <span class="tag">ReportLab PDF</span>
+          <span class="tag orange">Chart.js timeline</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 3: IMPLEMENTATION PLAN
+════════════════════════════════════════ -->
+<div class="section" id="s3">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>Step-by-Step Implementation Plan</h2>
+  </div>
+
+  <!-- PHASE 0 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: var(--accent);">Phase 0 · Foundation Setup</span>
+      <span class="phase-badge" style="background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.2);">Week 1–2</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">Dev environment</span>
+        <span class="phase-desc">Set up Python 3.11 venv, install PyTorch 2.1 with CUDA 11.8, configure VS Code with Pylance + Ruff. Docker Compose for PostgreSQL + Redis + TimescaleDB.</span>
+        <span class="phase-dur">3 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Repo structure</span>
+        <span class="phase-desc">Monorepo: <code>/backend</code> (FastAPI), <code>/models</code> (inference workers), <code>/pipeline</code> (orchestrator), <code>/frontend</code> (Next.js), <code>/scripts</code> (training, eval).</span>
+        <span class="phase-dur">1 day</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Baseline models download</span>
+        <span class="phase-desc">Download YOLOv8x.pt, ViT-B/16 weights, Whisper medium.pt, PANNs CNN14 checkpoint. Verify GPU inference on sample video. Establish latency baseline.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Dataset collection</span>
+        <span class="phase-desc">Download COCO 2017 val, HMDB51, AudioSet strong labels, OpenLogos-32. Record 30 minutes of custom IP camera footage for domain adaptation. Label 500 frames with CVAT.</span>
+        <span class="phase-dur">4 days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: #60a5fa;">Phase 1 · Ingestion + Detection Core</span>
+      <span class="phase-badge" style="background: rgba(0,119,255,0.1); color: #60a5fa; border: 1px solid rgba(0,119,255,0.2);">Week 3–5</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">StreamIngester module</span>
+        <span class="phase-desc">Build async RTSP reader using <code>cv2.VideoCapture</code> + asyncio. Implement retry logic for stream drops. Output: <code>FramePacket(frame_id, timestamp_ms, numpy_array)</code> into Redis Stream.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Object detection worker</span>
+        <span class="phase-desc">Wrap YOLOv8x in a Celery worker. Input: frame numpy array. Output: list of <code>Detection(class, bbox_xyxy, conf, track_id)</code>. Test on COCO val — expect mAP50 &gt; 0.68.</span>
+        <span class="phase-dur">3 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">ByteTrack integration</span>
+        <span class="phase-desc">Integrate ByteTrack tracker. Assign persistent IDs across frames. Store trajectories in Redis sorted set (key: track_id, score: timestamp, value: bbox). Test on MOT17 — expect HOTA &gt; 0.60.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Logo recognition module</span>
+        <span class="phase-desc">Fine-tune ViT-B/16 classification head on OpenLogos-32 (32 logo classes). Two-stage: YOLO crops ROI → ViT classifies. Train for 20 epochs, lr=1e-4, AdamW. Target top-1 accuracy &gt; 82%.</span>
+        <span class="phase-dur">4 days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: #fb923c;">Phase 2 · Action + Audio Intelligence</span>
+      <span class="phase-badge" style="background: rgba(255,107,53,0.1); color: #fb923c; border: 1px solid rgba(255,107,53,0.2);">Week 6–9</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">Pose + PoseFormer</span>
+        <span class="phase-desc">Run YOLOv8-Pose per tracked person crop. Keypoint sequences (T=16 frames) → PoseFormer for action classification. Classes: standing, walking, running, crouching, fighting, handshake, pointing, loitering.</span>
+        <span class="phase-dur">4 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">SlowFast coarse actions</span>
+        <span class="phase-desc">SlowFast R50 pre-trained on Kinetics-400. Fine-tune on NTU RGB+D subset for 12 surveillance-relevant actions. Input: 8 frames at 8× + 32 frames at 2× (slow-fast sampling). Output: action logits per clip.</span>
+        <span class="phase-dur">5 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Whisper speech pipeline</span>
+        <span class="phase-desc">Integrate whisper.cpp Python bindings. Process 30s audio chunks with 5s overlap. Detect language, transcribe, timestamp words. Store in timeline as <code>SpeechEvent(start_ms, end_ms, text, confidence)</code>.</span>
+        <span class="phase-dur">3 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">PANNs environmental audio</span>
+        <span class="phase-desc">CNN14 pre-trained on AudioSet. Run on 1-second mel-spectrogram windows. Filter to 20 surveillance-relevant classes. Threshold: 0.5. Output: <code>SoundEvent(timestamp_ms, class, confidence)</code> per second.</span>
+        <span class="phase-dur">3 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">AV Synchronization</span>
+        <span class="phase-desc">Implement timestamp alignment between video frames (PTS-based) and audio chunks (PCM sample offset / sample_rate). Build shared <code>EventTimeline</code> class that merges events by timestamp with configurable tolerance (±50ms).</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: #c084fc;">Phase 3 · Fusion Engine + Context Reasoning</span>
+      <span class="phase-badge" style="background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.2);">Week 10–12</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">Feature embedding preparation</span>
+        <span class="phase-desc">Extract backbone features: YOLOv8 P3 layer (80-dim object summary vector per frame), SlowFast final pool (2048-dim), PANNs embedding (2048-dim), optical flow magnitude histogram (32-dim). Normalize all to unit norm.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Cross-modal transformer</span>
+        <span class="phase-desc">Build 4-head cross-attention transformer in PyTorch. Visual tokens attend over audio tokens and vice versa. Positional encoding uses normalized timestamp within the 2s window. Output: 512-dim fused embedding per window. Train with contrastive loss on paired AV segments.</span>
+        <span class="phase-dur">5 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Event descriptor generation</span>
+        <span class="phase-desc">Post-fusion: rule-based extractor converts fused state into structured JSON event descriptor: <code>{timestamp, objects: [], actions: [], sounds: [], anomaly_score, scene_type}</code>. This is the input to the LLM context layer.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">LLM context reasoning</span>
+        <span class="phase-desc">Deploy Mistral-7B-Instruct (4-bit GGUF via llama.cpp). Sliding 30s buffer → structured prompt → LLM generates scene narrative + anomaly classification. Latency target: &lt;3s per 30s window (acceptable for non-real-time reasoning layer). Use few-shot examples in system prompt for surveillance context.</span>
+        <span class="phase-dur">5 days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: var(--accent);">Phase 4 · Backend API + Dashboard</span>
+      <span class="phase-badge" style="background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.2);">Week 13–14</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">FastAPI backend</span>
+        <span class="phase-desc">REST endpoints: auth (JWT), camera CRUD, video upload, analysis jobs, timeline query, alert history, report export. WebSocket endpoint for live event push per camera. Pydantic v2 models for all I/O.</span>
+        <span class="phase-dur">4 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Next.js dashboard</span>
+        <span class="phase-desc">Timeline view (Chart.js + D3 custom overlay), live camera grid, alert panel, video replay with bounding box overlay, analysis configuration form, report download. Tailwind CSS. Dark-first design.</span>
+        <span class="phase-dur">5 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Alert engine</span>
+        <span class="phase-desc">Rule engine with configurable conditions (e.g., anomaly_score &gt; X, specific action detected, person count &gt; N). AlertAgent evaluates every event window. Alert stored in DB + pushed via WebSocket + optional email webhook.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase-block">
+    <div class="phase-header">
+      <span class="phase-label" style="color: #f87171;">Phase 5 · Integration, Testing, Deployment</span>
+      <span class="phase-badge" style="background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2);">Week 15</span>
+    </div>
+    <div class="phase-body">
+      <div class="phase-row">
+        <span class="phase-task">End-to-end integration test</span>
+        <span class="phase-desc">Process 10 test videos (varied: indoor/outdoor, day/night, crowd/empty). Verify each pipeline stage produces correct outputs. Measure end-to-end latency from frame input to WebSocket push.</span>
+        <span class="phase-dur">3 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Performance optimization</span>
+        <span class="phase-desc">Profile with PyTorch Profiler. Apply TensorRT for YOLOv8 (expected 3× speedup). Batch inference for non-real-time workers. Quantize to INT8 where accuracy drop &lt; 2%.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Docker packaging</span>
+        <span class="phase-desc">Dockerfile per service. docker-compose.prod.yml with GPU passthrough (<code>runtime: nvidia</code>). Health checks for all services. Environment variable injection for production config.</span>
+        <span class="phase-dur">1 day</span>
+      </div>
+      <div class="phase-row">
+        <span class="phase-task">Documentation + FYP report</span>
+        <span class="phase-desc">API docs auto-generated from FastAPI OpenAPI schema. Architecture diagrams. Model evaluation tables. Setup guide. Final FYP report sections drafted from this blueprint.</span>
+        <span class="phase-dur">2 days</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 4: TECH STACK
+════════════════════════════════════════ -->
+<div class="section" id="s4">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <h2>Tech Stack + Justification</h2>
+  </div>
+
+  <h4>// Core AI / ML</h4>
+  <table class="tech-table">
+    <thead><tr><th>Tool</th><th>Category</th><th>Why Chosen</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tech-name">YOLOv8x</span></td><td class="tech-cat">Object Detection</td><td class="tech-why">State-of-art speed/accuracy tradeoff. Unified detection + segmentation + pose in one repo. Native ByteTrack integration. 50ms per frame on RTX 3060. RT-DETR as fallback for dense scenes.</td></tr>
+      <tr><td><span class="tech-name">ByteTrack</span></td><td class="tech-cat">Multi-Object Tracking</td><td class="tech-why">Tracks ALL detected boxes (not just high-confidence), dramatically reducing ID switches. Proven on MOT17/20 benchmarks. No appearance feature requirement for basic tracking — fast.</td></tr>
+      <tr><td><span class="tech-name">SlowFast R50</span></td><td class="tech-cat">Action Recognition</td><td class="tech-why">Two-pathway architecture explicitly models temporal dynamics at different speeds — ideal for surveillance where actions range from quick (punch) to slow (loitering). Pre-trained on Kinetics-700.</td></tr>
+      <tr><td><span class="tech-name">PoseFormer</span></td><td class="tech-cat">Pose-based Action</td><td class="tech-why">Transformer on keypoint sequences enables fine-grained action classification from skeleton data. Privacy-preserving alternative to RGB-based methods — person's exact appearance not required.</td></tr>
+      <tr><td><span class="tech-name">Whisper (medium)</span></td><td class="tech-cat">Speech-to-Text</td><td class="tech-why">Best-in-class multilingual ASR model deployable locally. No API dependency. Medium model balances accuracy vs speed. whisper.cpp provides 3-5× speedup via C++ inference without Python overhead.</td></tr>
+      <tr><td><span class="tech-name">PANNs CNN14</span></td><td class="tech-cat">Audio Classification</td><td class="tech-why">Trained on AudioSet (1.9M clips, 527 classes). CNN14 is the highest-accuracy single-model variant. Produces rich audio embeddings usable directly by fusion engine. Runs at ~10ms per second of audio.</td></tr>
+      <tr><td><span class="tech-name">Mistral-7B-Instruct</span></td><td class="tech-cat">Context Reasoning LLM</td><td class="tech-why">Best instruction-following capability at 7B scale. 4-bit quantized via GGUF runs on 8GB VRAM. llama.cpp inference server enables batched requests. Handles surveillance context prompts reliably.</td></tr>
+      <tr><td><span class="tech-name">ViT-B/16</span></td><td class="tech-cat">Logo Recognition</td><td class="tech-why">Patch-based vision transformer handles logo recognition well due to global attention over small cropped ROIs. Fine-tuning on OpenLogos-32 feasible with &lt;1000 samples per class via transfer learning.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>// Infrastructure / Backend</h4>
+  <table class="tech-table">
+    <thead><tr><th>Tool</th><th>Category</th><th>Why Chosen</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tech-name">FastAPI</span></td><td class="tech-cat">API Framework</td><td class="tech-why">Async-native, automatic OpenAPI docs, Pydantic v2 validation, WebSocket support built-in. 3× faster than Flask for async routes. Essential for non-blocking stream handling.</td></tr>
+      <tr><td><span class="tech-name">Redis Streams</span></td><td class="tech-cat">Message Queue</td><td class="tech-why">Sub-millisecond pub/sub for frame routing between services. Consumer groups enable horizontal scaling. Persistence ensures no frame loss if a worker crashes. Ordered by timestamp key.</td></tr>
+      <tr><td><span class="tech-name">TimescaleDB</span></td><td class="tech-cat">Time-series DB</td><td class="tech-why">PostgreSQL extension optimized for time-series. Hypertables auto-partition by time. Range queries on event timelines execute 10-100× faster than regular Postgres. Natively used by the dashboard.</td></tr>
+      <tr><td><span class="tech-name">Celery</span></td><td class="tech-cat">Task Queue</td><td class="tech-why">Distributes inference tasks across GPU workers. Priority queues for real-time vs batch. Redis broker. Celery Beat for scheduled tasks (model refresh, report generation).</td></tr>
+      <tr><td><span class="tech-name">Docker + NVIDIA Container Toolkit</span></td><td class="tech-cat">Containerization</td><td class="tech-why">GPU passthrough via nvidia-docker2. Isolated environments per service. Reproducible deployment. Production docker-compose with health checks, restart policies, and named volumes.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>// Frontend</h4>
+  <table class="tech-table">
+    <thead><tr><th>Tool</th><th>Category</th><th>Why Chosen</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tech-name">Next.js 14</span></td><td class="tech-cat">Web Framework</td><td class="tech-why">App router with server components. Streaming SSR. Native WebSocket support in API routes. Best DX for dashboard-style applications with complex data fetching patterns.</td></tr>
+      <tr><td><span class="tech-name">Chart.js + D3.js</span></td><td class="tech-cat">Visualization</td><td class="tech-why">Chart.js for standard charts (time-series, bar, pie). D3.js for custom timeline with event markers overlaid on video scrubber — impossible with chart libraries alone. Canvas-based for performance.</td></tr>
+      <tr><td><span class="tech-name">HLS.js</span></td><td class="tech-cat">Video Playback</td><td class="tech-why">Streams video in browser with frame-accurate seeking. Enables synchronized bounding box overlay during replay. Segmented HLS format generated by FFmpeg from original video.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 5: MULTI-AGENT DESIGN
+════════════════════════════════════════ -->
+<div class="section" id="s5">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <h2>Multi-Agent Design</h2>
+  </div>
+
+  <p>Detectra AI uses a 4-agent architecture where each agent is a specialized, independently scalable process. Agents communicate through Redis Streams. A Coordinator agent manages the hierarchy and resolves conflicts between agent outputs.</p>
+
+  <div class="agent-grid">
+    <div class="agent-card">
+      <div class="agent-name" style="color: var(--accent);">StreamAgent</div>
+      <div class="agent-role">Ingests and preprocesses raw video/audio streams. The gatekeeper — nothing enters the pipeline without passing through this agent.</div>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Responsibilities: RTSP connection management, frame extraction at variable FPS, audio splitting, CLAHE preprocessing, optical flow computation, timestamp embedding, frame routing to Redis Stream.</p>
+      <div class="io-label">INPUTS</div>
+      <div class="agent-inputs">
+        <span class="tag green">RTSP stream URL</span>
+        <span class="tag green">MP4/AVI file</span>
+        <span class="tag green">Camera config JSON</span>
+      </div>
+      <div class="io-label" style="margin-top:8px;">OUTPUTS</div>
+      <div class="agent-outputs">
+        <span class="tag blue">FramePackets → Redis</span>
+        <span class="tag blue">AudioChunks → Redis</span>
+      </div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-name" style="color: #60a5fa;">PerceptionAgent</div>
+      <div class="agent-role">Runs all visual and audio inference models in parallel. The "senses" of the system — raw detection and recognition.</div>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Responsibilities: YOLOv8 detection, ByteTrack tracking, logo recognition, PoseFormer action recognition, SlowFast clip inference, Whisper transcription, PANNs audio classification. All models run concurrently on GPU.</p>
+      <div class="io-label">INPUTS</div>
+      <div class="agent-inputs">
+        <span class="tag green">FramePackets from Redis</span>
+        <span class="tag green">AudioChunks from Redis</span>
+      </div>
+      <div class="io-label" style="margin-top:8px;">OUTPUTS</div>
+      <div class="agent-outputs">
+        <span class="tag blue">DetectionResults JSON</span>
+        <span class="tag blue">TrackState JSON</span>
+        <span class="tag blue">ActionLogits JSON</span>
+        <span class="tag blue">AudioEvents JSON</span>
+      </div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-name" style="color: #c084fc;">FusionAgent</div>
+      <div class="agent-role">Combines all perception outputs into a unified scene representation. The "understanding" layer — turns raw detections into meaningful scene state.</div>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Responsibilities: Cross-modal transformer fusion over 2s windows, temporal alignment of AV streams, scene embedding generation, event descriptor JSON construction, intermediate storage of fused embeddings.</p>
+      <div class="io-label">INPUTS</div>
+      <div class="agent-inputs">
+        <span class="tag green">DetectionResults</span>
+        <span class="tag green">ActionLogits</span>
+        <span class="tag green">AudioEvents</span>
+      </div>
+      <div class="io-label" style="margin-top:8px;">OUTPUTS</div>
+      <div class="agent-outputs">
+        <span class="tag blue">SceneEmbedding (512-dim)</span>
+        <span class="tag blue">EventDescriptor JSON</span>
+      </div>
+    </div>
+
+    <div class="agent-card">
+      <div class="agent-name" style="color: #fb923c;">ReasoningAgent</div>
+      <div class="agent-role">Generates high-level scene narratives, anomaly scores, and intent classifications using the LLM. The "brain" — interprets what the scene means.</div>
+      <p style="font-size:11px; color:var(--text3); margin-bottom:8px;">Responsibilities: Maintains 30s event buffer. Sends structured prompts to Mistral-7B. Parses LLM output into anomaly_score, intent_class, narrative_text. Decides whether to trigger AlertAgent. Writes summaries to DB.</p>
+      <div class="io-label">INPUTS</div>
+      <div class="agent-inputs">
+        <span class="tag green">EventDescriptor JSON (30s buffer)</span>
+      </div>
+      <div class="io-label" style="margin-top:8px;">OUTPUTS</div>
+      <div class="agent-outputs">
+        <span class="tag blue">SceneNarrative text</span>
+        <span class="tag orange">AnomalyScore [0–1]</span>
+        <span class="tag orange">AlertTrigger event</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Agent Communication Flow</h3>
+  <div class="flow-row">
+    <span class="flow-node">StreamAgent</span>
+    <span class="flow-arrow">→ Redis:frames</span>
+    <span class="flow-node">PerceptionAgent</span>
+    <span class="flow-arrow">→ Redis:detections</span>
+    <span class="flow-node">FusionAgent</span>
+    <span class="flow-arrow">→ Redis:events</span>
+    <span class="flow-node">ReasoningAgent</span>
+    <span class="flow-arrow">→ DB + WebSocket</span>
+    <span class="flow-node">Dashboard / Alerts</span>
+  </div>
+
+  <h3>Decision-Making Hierarchy</h3>
+  <p>All agents are supervised by a lightweight <strong>CoordinatorAgent</strong> that monitors Redis stream lag, agent health (heartbeats), and GPU memory. If any agent falls behind by &gt;5s, the Coordinator triggers adaptive frame-skip to recover. Priority order: <code>ReasoningAgent &gt; FusionAgent &gt; PerceptionAgent &gt; StreamAgent</code>. The ReasoningAgent's output is final — it can override lower-level alert conditions.</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠</span>
+    <p><strong>LLM latency note:</strong> ReasoningAgent processes 30s windows with ~3s LLM latency. This means reasoning output lags perception by 30s by design. This is acceptable for context understanding and not a bottleneck — real-time alerts come from PerceptionAgent's rule-based output, not the LLM. Clearly separate these two alert pathways in the dashboard UI.</p>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 6: DATASET + TRAINING
+════════════════════════════════════════ -->
+<div class="section" id="s6">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <h2>Dataset + Training Strategy</h2>
+  </div>
+
+  <table class="ds-table">
+    <thead>
+      <tr>
+        <th>Dataset</th>
+        <th>Used For</th>
+        <th>Size</th>
+        <th>Strategy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tech-name">COCO 2017</span></td>
+        <td class="tech-why">Object detection evaluation + fine-tuning</td>
+        <td class="tech-cat">118K train / 5K val</td>
+        <td class="tech-why">Use YOLOv8x pre-trained weights. Fine-tune last 2 layers on 500 custom surveillance frames for domain shift. 10 epochs, lr=1e-3.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">OpenLogos-32</span></td>
+        <td class="tech-why">Logo recognition training</td>
+        <td class="tech-cat">~4K images, 32 classes</td>
+        <td class="tech-why">Fine-tune ViT-B/16 classification head from scratch (freeze backbone 5 epochs, unfreeze last 4 layers for 15 more). Augmentation: random erase, color jitter, rotation ±15°.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">HMDB51</span></td>
+        <td class="tech-why">Action recognition baseline</td>
+        <td class="tech-cat">6.8K clips, 51 classes</td>
+        <td class="tech-why">Pre-train SlowFast. Select 12 surveillance-relevant classes. Fine-tune SlowFast R50 on these classes + custom clips. Use CutMix data augmentation.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">NTU RGB+D 120</span></td>
+        <td class="tech-why">Pose-based action recognition</td>
+        <td class="tech-cat">114K clips, 120 classes</td>
+        <td class="tech-why">Train PoseFormer on skeleton sequences. Select 15 classes. 3D pose to 2D projection for compatibility with single-camera setup.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">AudioSet (strong labels)</span></td>
+        <td class="tech-why">Environmental audio recognition</td>
+        <td class="tech-cat">~22K clips, 527 classes</td>
+        <td class="tech-why">Use PANNs CNN14 pre-trained weights directly. No fine-tuning needed — AudioSet coverage is comprehensive. Focus on post-processing: select top-20 classes relevant to surveillance.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">Custom Surveillance Footage</span></td>
+        <td class="tech-why">Domain adaptation for all models</td>
+        <td class="tech-cat">~30 min, self-recorded</td>
+        <td class="tech-why">Record from actual IP cameras in varied conditions (day/night, indoor/outdoor). Label with CVAT. Use 80/20 train/val split. Critical for closing domain gap between benchmark data and real deployment.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Training Environment</h3>
+  <ul class="plain">
+    <li>All training scripts in <code>/scripts/train/</code> using PyTorch Lightning for clean train loops.</li>
+    <li>Use Weights &amp; Biases (wandb) for experiment tracking — log mAP, loss curves, confusion matrices per epoch.</li>
+    <li>If local GPU insufficient: use Google Colab Pro+ (A100 available) for heavy training, import weights back locally.</li>
+    <li>Checkpoints saved every 5 epochs. Best checkpoint selected by val mAP, not final epoch.</li>
+    <li>LLM (Mistral-7B): not trained — only prompt-engineered with few-shot surveillance examples. System prompt defines the output schema strictly.</li>
+  </ul>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 7: DEPLOYMENT STRATEGY
+════════════════════════════════════════ -->
+<div class="section" id="s7">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <h2>Deployment Strategy</h2>
+  </div>
+
+  <h3>IP Camera Integration (RTSP)</h3>
+  <pre><code># OpenCV RTSP handler with reconnect logic
+import cv2, asyncio, time
+
+class RTSPStream:
+    def __init__(self, url: str, fps: int = 5):
+        self.url = url
+        self.fps = fps
+        self.cap = None
+
+    async def connect(self):
+        self.cap = cv2.VideoCapture(self.url, cv2.CAP_FFMPEG)
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+        self.cap.set(cv2.CAP_PROP_FPS, self.fps)
+
+    async def read_frames(self):
+        interval = 1.0 / self.fps
+        while True:
+            ret, frame = self.cap.read()
+            if not ret:
+                await asyncio.sleep(2)
+                await self.connect()  # auto-reconnect
+                continue
+            yield frame, time.time_ns() // 1_000_000  # timestamp_ms
+            await asyncio.sleep(interval)
+</code></pre>
+
+  <h3>Edge vs Cloud Architecture</h3>
+  <div class="arch-grid">
+    <div class="arch-card green">
+      <div class="arch-card-title">Edge Node (On-Site)</div>
+      <p>StreamAgent, PerceptionAgent (YOLOv8, ByteTrack, Pose). Runs on local GPU server or Jetson AGX Orin. Processes all camera feeds. Sends only structured JSON events upstream — NOT raw video. Drastically reduces bandwidth.</p>
+    </div>
+    <div class="arch-card blue">
+      <div class="arch-card-title">Cloud / Central Server</div>
+      <p>FusionAgent, ReasoningAgent (LLM), TimescaleDB, FastAPI, Next.js Dashboard. Can serve multiple edge nodes. Handles heavy LLM inference if edge GPU insufficient. Multi-tenant with per-site isolation.</p>
+    </div>
+    <div class="arch-card purple">
+      <div class="arch-card-title">FYP Demo Mode</div>
+      <p>All services run on a single GPU workstation via docker-compose. StreamAgent reads local MP4 or RTSP. NVIDIA Container Toolkit enables GPU sharing between containers via MPS.</p>
+    </div>
+  </div>
+
+  <h3>Scaling to Multiple Cameras</h3>
+  <ul class="plain">
+    <li>Each camera gets an independent StreamAgent instance (separate Docker container, unique camera_id).</li>
+    <li>PerceptionAgent uses consumer groups on Redis Streams — multiple workers pull from the same frame queue in parallel. Add workers = add parallelism, no code change.</li>
+    <li>FusionAgent maintains per-camera state dictionaries. Locks per camera_id prevent cross-camera state corruption.</li>
+    <li>Dashboard uses camera_id filter on all TimescaleDB queries. Each camera has its own event stream and alert channel.</li>
+    <li>For FYP: demonstrate 2–3 simultaneous cameras on a single RTX 3060 (12GB) using CUDA MPS to share GPU across processes.</li>
+  </ul>
+
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-val">5fps</div>
+      <div class="metric-label">Inference rate per camera</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">&lt;300ms</div>
+      <div class="metric-label">Perception latency</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">&lt;500ms</div>
+      <div class="metric-label">Alert push latency</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">2–3</div>
+      <div class="metric-label">Cameras on single RTX 3060</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 8: OPTIMIZATION STRATEGY
+════════════════════════════════════════ -->
+<div class="section" id="s8">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <h2>Optimization Strategy</h2>
+  </div>
+
+  <h3>Model Optimization</h3>
+  <table class="tech-table">
+    <thead><tr><th>Technique</th><th>Applied To</th><th>Expected Gain</th><th>Tool</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="tech-name">TensorRT INT8</span></td>
+        <td class="tech-why">YOLOv8, SlowFast</td>
+        <td class="tech-cat">2.5–4× speedup, &lt;2% mAP drop</td>
+        <td class="tech-why">torch2trt / TensorRT Python API. Calibration on 500 representative frames.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">ONNX Export</span></td>
+        <td class="tech-why">ViT logo model, PANNs CNN14</td>
+        <td class="tech-cat">1.5–2× speedup via ONNX Runtime</td>
+        <td class="tech-why"><code>torch.onnx.export()</code>. Use ORT with CUDA execution provider.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">GGUF 4-bit Quantization</span></td>
+        <td class="tech-why">Mistral-7B LLM</td>
+        <td class="tech-cat">8GB → 4GB VRAM. 2× token/s</td>
+        <td class="tech-why">llama.cpp Q4_K_M quantization. Run via Python bindings (llama-cpp-python).</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">whisper.cpp</span></td>
+        <td class="tech-why">Whisper medium</td>
+        <td class="tech-cat">3–5× vs PyTorch Whisper</td>
+        <td class="tech-why">C++ inference with cuBLAS CUDA backend. Python binding for subprocess call.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">Frame batching</span></td>
+        <td class="tech-why">PerceptionAgent</td>
+        <td class="tech-cat">40% GPU utilization improvement</td>
+        <td class="tech-why">Collect batch of 4 frames before inference call. Adds ~80ms latency, acceptable for 5fps pipeline.</td>
+      </tr>
+      <tr>
+        <td><span class="tech-name">Adaptive FPS</span></td>
+        <td class="tech-why">StreamAgent</td>
+        <td class="tech-cat">Reduces GPU load 30–50% in idle scenes</td>
+        <td class="tech-why">Drop FPS to 2 when optical flow magnitude is below threshold (scene is static). Auto-ramp back when motion detected.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Latency Reduction Strategy</h3>
+  <ul class="plain">
+    <li><strong>Zero-copy frame passing:</strong> Use shared memory (<code>multiprocessing.shared_memory</code>) between StreamAgent and PerceptionAgent. Avoid Redis serialization for frame numpy arrays — only send frame IDs over Redis.</li>
+    <li><strong>Async pipeline:</strong> Every agent uses Python asyncio. No blocking I/O anywhere in the hot path. Audio and video preprocessing run concurrently in separate threads.</li>
+    <li><strong>Early exit detection:</strong> If frame optical flow is near-zero AND no persons detected in prior 10 frames, skip SlowFast and PoseFormer — save ~80ms per frame.</li>
+    <li><strong>Redis pipeline commands:</strong> Batch Redis writes using pipeline context — reduces round-trips from N to 1 per frame cycle.</li>
+    <li><strong>TimescaleDB chunk tuning:</strong> Set chunk_time_interval = 1 hour for event tables. Use partial indexes on (camera_id, timestamp) for dashboard range queries.</li>
+  </ul>
+
+  <h3>Memory Management</h3>
+  <pre><code># GPU memory management pattern for all inference workers
+import torch, gc
+
+@torch.inference_mode()
+def run_inference(frames: list[np.ndarray]) -> list[dict]:
+    with torch.cuda.amp.autocast():           # FP16 automatically
+        tensor = preprocess(frames).to(device)
+        results = model(tensor)
+    torch.cuda.empty_cache()                  # prevent fragmentation
+    gc.collect()
+    return postprocess(results)
+</code></pre>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 9: RISKS + LIMITATIONS
+════════════════════════════════════════ -->
+<div class="section" id="s9">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <h2>Risks, Limitations + Mitigations</h2>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">GPU Memory Overflow</div>
+      <span class="risk-sev high">HIGH</span>
+    </div>
+    <div class="risk-problem">Running YOLOv8x + SlowFast + Whisper + Mistral-7B simultaneously may exceed 12GB VRAM. Multiple models competing on shared GPU causes OOM crashes.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Run Mistral-7B on CPU (acceptable at 30s processing cycle). Use model offloading — load SlowFast only when a person is detected (lazy loading). Allocate Whisper to CPU with whisper.cpp. Profile with <code>nvidia-smi</code> during load testing.</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">RTSP Stream Instability</div>
+      <span class="risk-sev high">HIGH</span>
+    </div>
+    <div class="risk-problem">IP cameras drop streams under network stress. OpenCV's VideoCapture silently fails — <code>ret=False</code> without exception. Unrecovered drops stall the entire pipeline.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Implement exponential backoff reconnect logic (1s, 2s, 4s, 8s). Heartbeat check every 10s — if no frame received, trigger reconnect. Dashboard shows camera status (connected / reconnecting / offline).</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">Real-World Domain Gap</div>
+      <span class="risk-sev high">HIGH</span>
+    </div>
+    <div class="risk-problem">Models trained on benchmark datasets (COCO, HMDB51) under ideal conditions perform poorly on actual surveillance footage: low resolution, motion blur, lens distortion, extreme angles, poor lighting.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Domain adaptation fine-tuning on 500 custom IP camera frames. Test-time augmentation (TTA) with horizontal flip averaging. CLAHE preprocessing for low-light. Plan 10% of total project time for domain-specific model tuning.</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">LLM Hallucination</div>
+      <span class="risk-sev med">MEDIUM</span>
+    </div>
+    <div class="risk-problem">Mistral-7B may generate inaccurate scene narratives or incorrect anomaly classifications, especially for ambiguous events. False alert generation undermines system trust.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Constrain LLM output with JSON schema validation. Use few-shot prompting with 5 labeled examples per scene type. Never trigger critical alerts from LLM alone — always require PerceptionAgent confirmation. Display confidence score and "AI-generated" label on all narratives.</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">AV Synchronization Drift</div>
+      <span class="risk-sev med">MEDIUM</span>
+    </div>
+    <div class="risk-problem">Audio and video streams may drift over time (common in RTSP). Misaligned timestamps cause fusion engine to correlate audio events with wrong video frames.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Use PTS (Presentation Timestamp) from FFmpeg — do not rely on wall clock. Implement NTP sync check at stream start. Add drift monitor: if A/V offset &gt;200ms, flag and trigger re-sync. Use FFmpeg's <code>-use_wallclock_as_timestamps 1</code> for live streams.</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">Privacy + Ethical Risk</div>
+      <span class="risk-sev med">MEDIUM</span>
+    </div>
+    <div class="risk-problem">System processes identifiable human data (faces, movements, speech). Facial recognition, if added, may violate Pakistani data privacy norms. Misuse for unauthorized surveillance.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Do NOT implement facial recognition in Phase 1 — use anonymous tracking IDs only. All stored video footage encrypted at rest (AES-256). Access control: JWT auth required for all API endpoints. Academic use declaration in FYP documentation. No real personal data used in demos.</div>
+  </div>
+
+  <div class="risk-item">
+    <div>
+      <div class="risk-label">Limited GPU Hardware</div>
+      <span class="risk-sev med">MEDIUM</span>
+    </div>
+    <div class="risk-problem">UCP lab GPUs may have limited availability. Training and running all models on a single consumer GPU is challenging at scale.</div>
+    <div class="risk-solution"><strong>Mitigation:</strong> Use Google Colab Pro+ (A100) for training. Download pre-trained weights for most models (no training needed). For FYP demo, run single camera at reduced resolution (480p) to demonstrate full pipeline within hardware constraints.</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SECTION 10: FINAL CAPABILITIES
+════════════════════════════════════════ -->
+<div class="section" id="s10">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <h2>Final System Capabilities</h2>
+  </div>
+
+  <div class="cap-grid">
+    <div class="cap-col can">
+      <div class="cap-col-header">✓ System CAN Do</div>
+      <ul class="cap-list">
+        <li>Process live RTSP streams from IP cameras at 5fps</li>
+        <li>Detect and classify 80+ object types in real time</li>
+        <li>Track multiple persons with persistent IDs across frames</li>
+        <li>Classify 12+ surveillance-relevant human actions</li>
+        <li>Recognize logos from 32+ classes in video frames</li>
+        <li>Transcribe speech from video audio (multilingual)</li>
+        <li>Classify 20+ environmental sounds (glass break, gunshot, crowd)</li>
+        <li>Fuse all modalities into a unified timeline-based event stream</li>
+        <li>Generate natural-language scene summaries using LLM</li>
+        <li>Score scene anomaly probability [0.0–1.0]</li>
+        <li>Push real-time alerts to dashboard in under 500ms</li>
+        <li>Support 2–3 simultaneous cameras on a single RTX 3060</li>
+        <li>Store and query historical event timelines</li>
+        <li>Export reports as PDF/CSV/JSON</li>
+        <li>Process uploaded MP4/AVI files in batch mode</li>
+        <li>Operate fully without any external APIs</li>
+        <li>Handle dark/low-light footage via CLAHE enhancement</li>
+        <li>Resume after camera stream drops automatically</li>
+      </ul>
+    </div>
+    <div class="cap-col cannot">
+      <div class="cap-col-header">✗ System CANNOT Do (Scope Limits)</div>
+      <ul class="cap-list">
+        <li>Facial recognition or biometric identification (intentionally excluded)</li>
+        <li>Process more than 3 cameras simultaneously on a single GPU without quality degradation</li>
+        <li>Achieve sub-100ms alert latency (perception alone is ~200ms)</li>
+        <li>Understand highly ambiguous or culturally-specific activities without fine-tuning</li>
+        <li>Generate alerts from the LLM layer in under 3 seconds (30s window needed)</li>
+        <li>Work reliably on very low-resolution video below 240p</li>
+        <li>Track objects through total occlusion for more than 10 seconds</li>
+        <li>Perform thermal or depth-based analysis (RGB only)</li>
+        <li>Predict future events (detection/classification only, not forecasting)</li>
+        <li>Self-improve or update models from deployment feedback (no online learning)</li>
+        <li>Run inference on CPU-only hardware at acceptable speed</li>
+        <li>Handle audio content in rare languages unsupported by Whisper</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Expected Performance Benchmarks (Target)</h3>
+  <table class="tech-table">
+    <thead><tr><th>Metric</th><th>Target Value</th><th>Measurement Method</th></tr></thead>
+    <tbody>
+      <tr><td class="tech-why">Object Detection mAP50</td><td><span class="tech-name">&gt; 0.65</span></td><td class="tech-cat">COCO val + custom surveillance subset</td></tr>
+      <tr><td class="tech-why">Action Recognition Top-1</td><td><span class="tech-name">&gt; 78%</span></td><td class="tech-cat">HMDB51 val (12 class subset)</td></tr>
+      <tr><td class="tech-why">Logo Recognition Top-1</td><td><span class="tech-name">&gt; 82%</span></td><td class="tech-cat">OpenLogos-32 val set</td></tr>
+      <tr><td class="tech-why">ASR Word Error Rate</td><td><span class="tech-name">&lt; 12%</span></td><td class="tech-cat">LibriSpeech test-clean (proxy)</td></tr>
+      <tr><td class="tech-why">Environmental Audio mAP</td><td><span class="tech-name">&gt; 0.43</span></td><td class="tech-cat">AudioSet eval (20 class subset)</td></tr>
+      <tr><td class="tech-why">Perception Latency (1 cam)</td><td><span class="tech-name">&lt; 300ms</span></td><td class="tech-cat">Frame input to event JSON output</td></tr>
+      <tr><td class="tech-why">Alert Push Latency</td><td><span class="tech-name">&lt; 500ms</span></td><td class="tech-cat">Event to WebSocket client</td></tr>
+      <tr><td class="tech-why">Anomaly Detection F1</td><td><span class="tech-name">&gt; 0.70</span></td><td class="tech-cat">Custom labeled test clips (10 videos)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-icon">✓</span>
+    <p><strong>FYP Demonstration Recommendation:</strong> For the final presentation, prepare 3 pre-recorded test videos: (1) Normal office activity — should produce low anomaly scores. (2) Staged suspicious behavior (person loitering + crowd forming + raised voices) — should trigger high anomaly score + alert + LLM narrative. (3) Night/low-light camera feed — demonstrates CLAHE preprocessing value. This directly maps to the 6 completeness criteria in your SRS and shows evaluators every pipeline stage in sequence.</p>
+  </div>
+
+</div>
+
+</div><!-- .content -->
+</div><!-- .layout -->
+
+<script>
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sidebar a');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

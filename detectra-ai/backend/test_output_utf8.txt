@@ -1,0 +1,19 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.6, pytest-9.0.2, pluggy-1.6.0 -- F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\backend
+plugins: anyio-4.13.0
+collecting ... collected 22 items
+
+tests/test_auth.py::test_register_success ERROR                          [  4%]
+
+=================================== ERRORS ====================================
+___________________ ERROR at setup of test_register_success ___________________
+tests\conftest.py:51: in client
+    app.dependency_overrides[get_db] = override_get_db
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'app' has no attribute 'dependency_overrides'
+=========================== short test summary info ===========================
+ERROR tests/test_auth.py::test_register_success - AttributeError: module 'app...
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+============================== 1 error in 0.13s ===============================

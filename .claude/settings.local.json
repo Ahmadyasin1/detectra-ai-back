@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0][''''text'''']; print\\(text[:8000]\\)\")",
+      "Bash(python \"C:/Users/ahmad/AppData/Local/Programs/Python/Python312/python.exe\" -c \":*)",
+      "Bash(python3.12 -c \"import json; ...\")",
+      "Bash(python -c \":*)"
+    ]
+  }
+}

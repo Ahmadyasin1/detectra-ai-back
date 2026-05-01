@@ -1,0 +1,9 @@
+# Place trained model weights here after running the Colab/Kaggle training notebooks:
+#
+#   logo_vit_quantized.onnx        (from notebook 01)
+#   motion_videomae_quantized.onnx (from notebook 02)
+#   fusion_transformer.pt          (from notebook 03)
+#
+# YOLOv8n (yolov8n.pt) will be auto-downloaded by ultralytics on first run.
+# Whisper (base) will be auto-downloaded by OpenAI Whisper on first run.
+# YAMNet will be loaded from TensorFlow Hub on first run.

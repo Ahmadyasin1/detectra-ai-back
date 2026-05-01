@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Models (large binary files — store in Drive/S3)
+backend/models/*.pt
+backend/models/*.onnx
+backend/models/whisper/
+!backend/models/.gitkeep
+
+# Uploads & temp
+backend/uploads/
+backend/temp/
+
+# Node
+node_modules/
+.next/
+.npm
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.iml

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 60 venv/Scripts/python -m pytest tests/ -x -q)",
+      "Bash(timeout 90 venv/Scripts/python -m pytest tests/ -x -q)",
+      "Bash(venv/Scripts/python -m pytest tests/ -v)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(venv/Scripts/python -m pytest tests/ -v --tb=short)",
+      "Bash(backend/venv/Scripts/python -c \"import ast; ast.parse\\(open\\('analyze_videos.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(backend/venv/Scripts/python analyze_videos.py --all)",
+      "Bash(backend/venv/Scripts/python -c ':*)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(timeout 30 backend/venv/Scripts/python -W ignore -c ':*)",
+      "Bash(backend/venv/Scripts/python analyze_videos.py \"../test videos/24333-341474163_small.mp4\")",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}

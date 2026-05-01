@@ -1,0 +1,1162 @@
+ 
+University of Central Punjab 
+ 
+BSAI FINAL PROJECT 
+Requirements Specification 
+ 
+Detectra AI 
+ 
+ 
+ 
+ 
+ 
+Project Advisor 
+ 
+ 
+Mr. Usman Aamer 
+ 
+ 
+ 
+Presented by:  
+Group ID: F25AI009 
+ 
+L1F22BSAI0031                     Abdul Rehman 
+L1F22BSAI0034                     Eman Sarfraz 
+L1F22BSAI0052  
+       Ahmad Yasin 
+ 
+ 
+ 
+Faculty of Information Technology & Computer Science 
+ 
+University of Central Punjab 
+
+ 
+University of Central Punjab 
+ 
+Software Requirements 
+Specification  
+Version 1.0 
+ 
+Detectra AI 
+Advisor: Usman Aamer 
+Group ACT-6 
+Member Name 
+Primary Responsibility 
+Abdul Rehman 
+Implementing backend services, model 
+inference engines, and secure video 
+processing pipelines. 
+Eman Sarfraz 
+Managing full project docs and co-
+developing 
+transformer-based alignment module. 
+Ahmad Yasin 
+Training custom logo/motion models, 
+preprocessing with OpenCV/Librosa, and 
+real-time sync engine. 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page i 
+Table of Contents 
+Table of Contents ........................................................................................................................... i 
+Revision History ............................................................................................................................ ii 
+Previous Phases Feedback ............................................................................................................ ii 
+Abstract .........................................................................................................................................1 
+1. Introduction and Background............................................................................................2 
+1.1 
+Product (Problem Statement) ................................................................................................. 2 
+1.2 
+Background ................................................................................................................................ 2 
+1.3 
+Scope .......................................................................................................................................... 2 
+1.4 
+Objective(s)/Aim(s)/Target(s) .................................................................................................. 3 
+1.5 
+Challenges ................................................................................................................................. 3 
+1.6 
+Learning Outcomes .................................................................................................................. 3 
+1.7 
+Nature of End Product .............................................................................................................. 3 
+1.8 
+Completeness Criteria .............................................................................................................. 4 
+1.9 
+Business Goals ......................................................................................................................... 4 
+1.10 
+Related Work/ Literature Survey/ Literature Review ........................................................... 4 
+1.11 
+Document Conventions ............................................................................................................ 4 
+2. Overall Description ...............................................................................................................5 
+2.1 
+Product Features ...................................................................................................................... 5 
+2.2 
+User Classes and Characteristics .......................................................................................... 5 
+2.3 
+Operating Environment ............................................................................................................ 5 
+2.4 
+Design and Implementation Constraints ............................................................................... 6 
+2.5 
+Assumptions and Dependencies ............................................................................................ 6 
+3. Functional Requirements ........................................................................................................7 
+3.1 
+UC-1: Sign In ............................................................................................................................. 8 
+3.2 
+UC-2: Sign Out .......................................................................................................................... 9 
+3.13 
+UC-8: Real-Time Progress Feedback ................................................................................. 15 
+3.9 
+Requirements Analysis and Modeling ................................................................................. 16 
+4. Nonfunctional Requirements ...........................................................................................19 
+4.1 
+Performance Requirements .................................................................................................. 19 
+4.2 
+Safety Requirements .............................................................................................................. 19 
+4.3 
+Security Requirements ........................................................................................................... 19 
+4.4 
+Additional Software Quality Attributes ................................................................................. 19 
+5. Other Requirements ...........................................................................................................20 
+6. Revised Project Plan ..........................................................................................................21 
+7. References ............................................................................................................................22 
+Appendix A: Glossary..................................................................................................................24 
+Appendix B: IV & V Report .......................................................................................................25 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page ii 
+Revision History 
+Name 
+Date 
+Reason For Changes 
+Version 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Previous Phases Feedback 
+ 
+Idea Defence Feedback (Screenshot)  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 1 
+Abstract 
+ 
+Detectra AI is a unified web application designed for multimodal video analysis, providing an end-to-
+end solution for extracting synchronized insights from raw video data. Unlike existing systems that rely 
+on third-party APIs, Detectra AI integrates object detection, logo recognition, motion/activity 
+recognition, and audio transcription (including environmental sounds and speech) into a single platform. 
+Using a transformer-based fusion engine, the system synchronizes outputs from multiple modalities into 
+a unified, timeline-based dashboard, enabling deeper contextual understanding and real-time analysis. 
+This project addresses key challenges in current video analysis tools, including limitations in contextual 
+integration, privacy concerns, and scalability issues associated with API dependencies. By offering a 
+self-contained, API-free framework, Detectra AI ensures enhanced privacy, customization, and 
+scalability, making it ideal for applications in surveillance, sports analytics, media monitoring, and other 
+domains. The project covers a broad range of technical knowledge, including deep learning (CNNs, 
+Transformers), computer vision (YOLO, DETR, Vision Transformers), natural language processing 
+(speech-to-text), and web development (Flask, Next.js), culminating in an interactive, timeline-based 
+dashboard that delivers actionable insights across various industries. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 2 
+ 
+1. Introduction and Background 
+Detectra AI is an innovative project aimed at revolutionizing video analysis through multimodal AI 
+integration. This section provides the context, domain knowledge, and motivation for the project, 
+highlighting the need for a self-sufficient platform in an era of exponential video data growth. 
+1.1 Product (Problem Statement) 
+Existing video analysis systems rely heavily on third-party APIs, which limits customization and raises 
+privacy concerns. These systems process different modalities (visual, audio, text) separately, failing to 
+capture holistic context and lacking unified reporting mechanisms. The core problem is the lack of a 
+self-sufficient, multimodal video intelligence platform. 
+ 
+1.2 Background 
+Video data growth has been exponential, but analysis tools are fragmented, often requiring separate 
+APIs for visual objects, audio cues, or text. This modularity hinders real-time contextual understanding 
+and creates dependence on external services, leading to issues in data privacy, scalability, and 
+integration. Recent multimodal AI advancements (e.g., CLIP, GPT-4V) show promise but often lack 
+deployment flexibility. Detectra AI is designed to address this by offering a holistic, integrated 
+framework that processes video, audio, and language modalities together in a self-contained manner. 
+ 
+1.3 Scope 
+The scope of this SRS covers the development of a unified web application called Detectra AI for 
+end-to-end multimodal video analysis. This includes all required modules for object detection, logo 
+recognition, motion/activity recognition, audio transcription, a transformer-based fusion engine, and 
+a final interactive, timeline-based dashboard. 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 3 
+1.4 Objective(s)/Aim(s)/Target(s) 
+• 
+To develop a web-based application for video analysis. 
+• 
+To implement object detection, logo recognition, human motion/action recognition, and 
+audio analysis (environmental & speech-to-text). 
+• 
+To design a transformer-based multimodal fusion engine to align video and audio outputs 
+contextually. 
+• 
+To provide an interactive dashboard for timeline-based reports and visual analytics. 
+• 
+To demonstrate system autonomy without reliance on external APIs. 
+ 
+1.5 Challenges 
+• 
+Designing an efficient fusion model for aligning multimodal data. 
+• 
+Training/testing custom logo recognition models. 
+• 
+Real-time synchronization of audio and visual streams. 
+• 
+Optimizing performance on limited hardware resources. 
+1.6 Learning Outcomes 
+• 
+Expertise in transformer-based multimodal fusion models. 
+• 
+Hands-on experience with video/audio preprocessing and analysis. 
+• 
+Proficiency in deploying end-to-end AI-powered web applications. 
+• 
+Understanding of designing privacy-preserving, API-free systems. 
+ 
+1.7 Nature of End Product 
+The end product is a web-based software package that applies advanced AI models for unified video 
+intelligence, producing interactive dashboards and timeline reports for actionable insights. 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 4 
+ 
+1.8 Completeness Criteria 
+S.No. Criteria 
+Weightage % 
+1 
+Object detection & logo recognition module 
+20  
+2 
+Motion/action recognition module 
+15  
+3 
+Audio analysis (environmental + speech-to-text) 
+15  
+4 
+Multimodal fusion engine (transformer-based) 
+25  
+5 
+Interactive web dashboard (timeline reports & analytics) 15  
+6 
+Final integration, testing, & documentation 
+10  
+ 
+1.9 Business Goals 
+The software addresses the corporate goal of providing an API-free, privacy-preserving video 
+analysis tool and has industry relevance for surveillance, sports analytics, media monitoring, and 
+smart cities. 
+ 
+1.10 Related Work/ Literature Survey/ Literature Review 
+State-of-the-art models (e.g., CLIP, Flamingo, GPT-4V) show progress in joint vision-language 
+understanding but require large infrastructure and still often rely on modular pipelines. Existing video 
+analysis tools are typically limited to single modalities (e.g., YOLO for objects, Whisper for speech) or 
+integrate functionality via third-party APIs. Detectra AI differentiates itself by offering an integrated, 
+API-independent pipeline with domain-specific adaptability. 
+ 
+1.11 Document Conventions 
+Italicized text represents project-specific technical terms (e.g., Multimodal Fusion Engine). Acronyms (e.g., SRS, 
+AI, DETR) are defined in Appendix A. 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 5 
+2. Overall Description 
+2.1 Product Features 
+Detectra AI's major features are: 
+• 
+Multimodal Analysis Pipeline: End-to-end processing of visual (object, logo, motion) and audio (speech, 
+environmental sound) data from a single video file. 
+• 
+Contextual Fusion: A transformer-based engine to synchronize outputs from multiple modalities. 
+• 
+Timeline Reporting: A dashboard that presents synchronized results chronologically for deep contextual 
+understanding. 
+• 
+API-Free Operation: A self-contained video intelligence framework. 
+ 
+2.2 User Classes and Characteristics 
+The primary user class is: 
+• 
+Analysts/Researchers: Users from fields like surveillance, sports analytics, media monitoring, and 
+journalism. 
+o 
+Characteristics: Technical understanding of video data, require actionable, time-stamped insights, 
+prioritize data privacy and system autonomy. 
+ 
+2.3 Operating Environment 
+• 
+Hardware: Requires a GPU-enabled workstation for training/testing the deep learning 
+models. 
+• 
+Software/OS: The application will operate within a standard web browser (for the dashboard) 
+and rely on a backend running Linux/Windows/macOS capable of hosting the development 
+stack. 
+• 
+Coexistence: Must peacefully coexist with standard machine learning libraries and web 
+servers. 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 6 
+2.4 Design and Implementation Constraints 
+• 
+Technology Stack: Must use specific technologies including PyTorch/TensorFlow, Hugging 
+Face models, OpenCV, Librosa, FFmpeg, and the web framework Flask/Next.js. 
+• 
+Hardware Limitation: Optimizing model performance for potentially limited hardware 
+resources available for deployment/testing. 
+• 
+Model Training: Requires training/testing custom logo recognition models. 
+• 
+Data Privacy: Must ensure compliance with data privacy regulations, especially for 
+surveillance use-cases. 
+ 
+2.5 Assumptions and Dependencies 
+• 
+Assumptions: 
+o The necessary GPU hardware will be accessible for training and testing large models. 
+o Standard open-source datasets (OpenLogos, COCO, AudioSet) and custom-curated 
+datasets are available and sufficient for training. 
+• 
+Dependencies: 
+o Reliance on the stability and future support of the chosen open-source AI libraries (e.g., 
+YOLO, DETR, Whisper, ViT, wav2vec 2.0). 
+o Integration with video and audio pre-processing tools like OpenCV and FFmpeg. 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 7 
+3. Functional Requirements 
+UC-0: General Use Case 
+Identifier 
+UC-0 
+Purpose 
+To allow the Analyst/Research user to process video inputs and 
+generate a comprehensive report based on the analysis. 
+Priority 
+High 
+Pre-conditions 
+The user must be signed up and have the necessary permissions. 
+A video file must be selected or uploaded for analysis. 
+Post-conditions 
+A comprehensive analysis report is generated and available for 
+viewing and download. The analysis status is updated. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User selects the 'Analyze Video and 
+Generate Report' feature and either 
+uploads a new video or selects one from 
+storage. 
+System displays video analysis 
+configuration options 
+2 
+User confirms the video file and applies 
+the desired analysis modalities (visual, 
+audio, specific features). 
+System validates the file format and 
+checks the configuration settings. 
+3 
+User initiates the analysis process by 
+clicking 'Start Analysis'. 
+System queues the video for processing, 
+displays a progress indicator, and sends 
+a confirmation message. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+(Analysis Fails) The video file is 
+corrupted, or an internal error occurs 
+during processing. 
+System stops the analysis, logs the 
+error, and displays an error message to 
+the user: "Video analysis failed. Please 
+try again." 
+2 
+(Invalid File) User attempts to upload a 
+non-supported file type (e.g., .doc instead 
+of .mp4). 
+System rejects the upload and displays 
+an error message: "Invalid file format. 
+Please upload a supported video file." 
+3 
+(Cancel Analysis) User cancels the 
+analysis while it is in progress. 
+System immediately stops processing, 
+cancels the job, and displays a 
+confirmation: "Analysis successfully 
+cancelled." 
+Table 1: UC-1 
+ 
+                                               (2.60) General Use-Case Diagram 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 8 
+3.1 UC-1: Sign In 
+Identifier 
+UC-1 
+Purpose 
+To allow users to securely sign into the Detectra AI platform to 
+access video analysis features.  
+Priority 
+High 
+Pre-conditions 
+User has a registered account; internet connection is active. 
+Post-conditions 
+User is authenticated and redirected to the dashboard with access 
+to personalized features. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User navigates to the login page. 
+System displays login form with email 
+and password fields. 
+2 
+User enters credentials and clicks 'Sign 
+In'. 
+System validates credentials against the 
+database. 
+ 
+3 
+(If valid) User is authenticated. 
+System redirects user to the dashboard 
+with a welcome message. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User enters incorrect credentials.  
+System displays an error message: 
+"Invalid email or password." 
+2 
+User selects 'Forgot Password'. 
+System sends a password reset link to 
+the user's email. 
+3 
+User requests a new account. 
+System redirects to registration page. 
+Table 2: UC-1  
+ 
+                                               (2.61) Sign-In 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 9 
+3.2 UC-2: Sign Out 
+ 
+Identifier 
+UC-2 
+Purpose 
+ To enable users to securely sign out of the Detectra AI platform. 
+Priority 
+Medium 
+Pre-conditions 
+User is currently signed in. 
+Post-conditions 
+User session is terminated, and they are logged out. 
+ 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User clicks 'Sign Out' on the dashboard.  
+System displays a confirmation prompt. 
+2 
+User confirms sign-out. 
+System terminates the session and 
+clears credentials. 
+3 
+User is logged out. 
+ System redirects to the login page with 
+a logout message. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User cancels sign-out. 
+System returns to the dashboard. 
+2 
+Session timeout occurs. 
+System automatically logs out and 
+prompts re-login. 
+ 
+                        
+                                                         (2.71) Sign-Out 
+                            
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 10 
+               
+ 
+ 
+2.8 UC-3: Upload and Analyze Video 
+ 
+Identifier 
+UC-3 
+Purpose 
+To allow users to upload and analyze a video file using the 
+Detectra AI platform.  
+Priority 
+High 
+Pre-conditions 
+ User is signed in; video file meets format requirements (MP4, 
+AVI). 
+Post-conditions 
+Analysis report is generated and available for viewing. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+ User navigates to the 'Upload Video' 
+page.  
+System displays a file upload interface. 
+2 
+User selects and uploads a video file. 
+System validates file format and size, 
+then processes it. 
+3 
+Analysis completes. 
+System generates a timeline-based 
+report and notifies user. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User uploads an unsupported format. 
+System displays: "Unsupported file 
+format. Please use MP4 or AVI." 
+2 
+Upload fails due to size limit. 
+System shows: "File exceeds 500MB 
+limit. Try a smaller file." 
+3 
+User cancels upload. 
+System clears the upload queue and 
+returns to the page 
+ 
+                                                 (2.81) Analyze and Upload Video 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 11 
+2.9 UC-4: Configure Analysis Modalities 
+ 
+Identifier 
+UC-4 
+Purpose 
+To enable users to configure analysis modalities (e.g., object 
+detection, audio transcription) before processing a video.  a video 
+is uploaded. 
+Priority 
+Medium 
+Pre-conditions 
+ User is signed in; a video is uploaded. 
+Post-conditions 
+Analysis is customized based on selected modalities. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+ User accesses the 'Configure Analysis' 
+page.  
+ 
+System displays toggle options for 
+modalities (e.g., object, audio). 
+2 
+User selects desired modalities (e.g., 
+object detection on). 
+System updates settings and saves 
+configuration. 
+3 
+User initiates analysis. 
+System processes video with selected 
+modalities. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+ User deselects all modalities.  
+System prompts: "Select at least one 
+modality." 
+2 
+User resets to default settings. 
+System reverts to all modalities 
+enabled.  
+ 
+                                                 
+                                      (2.91) Configure Analysis Modalities 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 12 
+2.10 UC-5: View Timeline Report 
+ 
+Identifier 
+UC-5 
+Purpose 
+To allow users to view and interact with the timeline-based 
+analysis report on the dashboard.  
+Priority 
+High 
+Pre-conditions 
+ User is signed in; analysis report is generated. 
+Post-conditions 
+User gains insights from the visualized data. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User navigates to the 'Dashboard'.  
+ 
+System displays the timeline report with 
+synchronized events. 
+2 
+User zooms into a specific time segment. 
+ System updates the view with detailed 
+event data. 
+3 
+User exports the report 
+System generates a PDF/CSV file for 
+download. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User filters by modality (e.g., audio 
+only).  
+System refreshes display with filtered 
+data. 
+2 
+Report generation fails. 
+System notifies: "Export failed. Try 
+again."  
+ 
+ 
+ 
+ 
+                                          (2.10.1) View Timeine Report 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 13 
+ 
+2.11 UC-6: Register 
+ 
+Identifier 
+UC-6 
+Purpose 
+To enable users to register a new account for accessing Detectra 
+AI. 
+Priority 
+Medium 
+Pre-conditions 
+User has no existing account; internet connection is active. 
+Post-conditions 
+User account is created, and they can log in. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User navigates to the 'Register' page. 
+System displays a registration form 
+(email, password, name). 
+2 
+User fills and submits the form. 
+System validates data and sends 
+confirmation email. 
+3 
+User verifies email. 
+System activates the account and 
+redirects to login. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User enters duplicate email. 
+System shows: "Email already 
+registered." 
+2 
+User skips email verification. 
+System locks account until verification. 
+ 
+                                                           (2.11.1) Register 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 14 
+ 
+2.12 UC-7: Manage Profile Settings 
+ 
+Identifier 
+UC-7 
+Purpose 
+To allow users to manage profile settings (e.g., update password, 
+preferences).  
+Priority 
+Low 
+Pre-conditions 
+User is signed in. 
+Post-conditions 
+User profile is updated with new settings. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User navigates to 'Profile Settings'.  
+System displays current profile details. 
+2 
+User updates password or preferences. 
+System validates changes and saves 
+them. 
+3 
+User saves changes. 
+System confirms: "Profile updated 
+successfully." 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User enters mismatched passwords. 
+System shows: "Passwords do not 
+match." 
+2 
+User cancels changes. 
+System discards updates and returns to 
+profile.  
+  
+                                                            (2.12.1) Manage Profile Settings 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 15 
+3.13 UC-8: Real-Time Progress Feedback 
+Identifier 
+UC-8 
+Purpose 
+To provide real-time progress feedback during video analysis.  
+Priority 
+Medium 
+Pre-conditions 
+User is signed in; video analysis is initiated. 
+Post-conditions 
+User receives updates on analysis progress. 
+Typical Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User starts video analysis.  
+System displays a progress bar (e.g., 
+0% complete). 
+2 
+Analysis progresses. 
+System updates progress bar (e.g., 50% 
+complete). 
+3 
+Analysis completes. 
+ System shows 100% and redirects to 
+report. 
+Alternate Course of Action 
+S# 
+Actor Action 
+System Response 
+1 
+User pauses analysis.  
+System halts processing and holds 
+progress. 
+2 
+Analysis fails midway. 
+System displays: "Analysis interrupted. 
+Retry?" 
+ 
+                                                                 (2.13.1) Progress Feedback 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 16 
+ 
+3.9 Requirements Analysis and Modeling 
+Following are the analysis models: use-case diagram, entity-relationship diagram, sequence diagram, flow chart  
+and state diagram. 
+ 
+ 
+ 
+ 
+(2.91) Entity-Relationship Diagram (Database) 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 17 
+ 
+(2.92) State-Diagram 
+ 
+ 
+ 
+(2.93) Sequence Diagram 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 18 
+ 
+ 
+(2.94) Flow Chart 
+ 
+ 
+ 
+(2.95) General Use-Case Diagram 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 19 
+ 
+4. Nonfunctional Requirements 
+4.1 Performance Requirements 
+• 
+Processing Time: The system should process a 1-minute video segment and generate a unified 
+report within a reasonable time limit (e.g., T seconds), prioritizing efficient inference over real-
+time processing. 
+• 
+Scalability: The framework must be designed to support large-scale datasets with GPU 
+acceleration to handle future growth. 
+4.2 Safety Requirements 
+N/A (Project is a software system; no physical safety concerns beyond standard data center operations). 
+4.3 Security Requirements 
+• 
+Privacy: Must ensure data privacy compliance, especially for sensitive data like surveillance 
+video. 
+• 
+Access Control: User identity authentication requirements must be defined for accessing the 
+web application and its reports. 
+4.4 Additional Software Quality Attributes 
+• 
+Reliability: The core detection and fusion modules must maintain high accuracy for all 
+modalities. 
+• 
+Extensibility: The framework is designed to easily integrate future modalities (e.g., 
+biometric recognition, sentiment analysis). 
+• 
+Maintainability: The use of well-established libraries and modular design should ensure high 
+code maintainability. 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 20 
+ 
+5. Other Requirements 
+N/A 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 21 
+6. Revised Project Plan 
+The project plan is presented as a Gantt chart, showing parallel tasks. The duration is approximately 2 
+regular semesters. 
+Phase/Module 
+Start Date End Date Duration 
+Literature Review & Dataset Collection 
+Sept 2025  Oct 2025  2 Months 
+Object Detection & Logo Recognition 
+Oct 2025  
+Dec 2025  3 Months 
+Motion/Action Recognition 
+Oct 2025  
+Dec 2025  3 Months 
+Audio Analysis (Speech/Environmental) 
+Nov 2025  
+Jan 2026  
+2 Months 
+Multimodal Fusion Engine (Transformer) Dec 2025  
+Jan 2026  
+1 Month 
+Dashboard Development 
+Jan 2026  
+Feb 2026  2 Weeks 
+Testing, Integration & Finalization 
+Feb 2026  
+Feb 2026  1 Week 
+ 
+                                         
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 22 
+7. References 
+[1] A. Radford et al., "Learning Transferable Visual Models From Natural Language Supervision (CLIP)," in 
+Proc. 38th Int. Conf. Mach. Learn. (ICML), 2021. 
+ 
+[2] J-B. Alayrac et al., "Flamingo: a Visual Language Model for Few-Shot Learning," arXiv preprint 
+arXiv:2204.14198, 2022. 
+ 
+[3] OpenAI, "GPT-4 Technical Report," arXiv preprint arXiv:2303.08774, 2023. 
+ 
+[4] N. Carion et al., "End-to-End Object Detection with Transformers (DETR)," in Proc. Eur. Conf. Comput. Vis. 
+(ECCV), 2020. 
+ 
+[5] A. Baevski et al., "wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations," in 
+Proc. 34th Conf. Neural Inf. Process. Syst. (NeurIPS), 2020. 
+ 
+[6] A. Dosovitskiy et al., "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale (ViT)," 
+in Proc. 9th Int. Conf. Learn. Represent. (ICLR), 2021. 
+ 
+[7] R. Girdhar et al., "Anticipative Video Transformer (AVT)," Preprint, 2021. 
+ 
+[8] S. Bhagat, Y. Hu, and A. Zadeh, "Multimodal research in vision and language: A review of current and 
+emerging trends," Inf. Fusion, vol. 77, pp. 1-28, Jan. 2023. 
+ 
+[9] Anonymous, "Thinking with Video," alphaXiv preprint, 2025. 
+ 
+[10] Google DeepMind, "Video models are zero-shot learners and reasoners," Sep. 24, 2025. [Online]. Available: 
+https://deepmind.google/research/publications. 
+ 
+[11] Anonymous, "Cambrian-S: A Specialized MLLM for Spatial and Temporal Reasoning," alphaXiv preprint, 
+2025. 
+ 
+[12] M. Al-Shabi et al., "Audio-Visual Action Recognition Using Transformer Fusion Network," Appl. Sci., vol. 
+14, no. 3, p. 1190, Feb. 2024. 
+ 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 23 
+[13] Anonymous, "Transformer-Based Multimodal Fusion for Automated Retail Product Recognition," Res. Gate 
+Preprint, 2025. 
+ 
+[14] Z. Cui et al., "A Transformer-based Multimodal Fusion Model for Efficient Crowd Counting Using Visual 
+and Wireless Signals," in Proc. IEEE Wirel. Commun. Netw. Conf. (WCNC), 2025. 
+ 
+[15] A. Ulhaq, Z. Ali, and W. H. Butt, "Vision Transformers for Action Recognition: A Survey," arXiv preprint 
+arXiv:2209.05700, 2022. 
+ 
+[16] Anonymous, "Transformer Based Deep Learning Model For Object Detection Using Meta Learning," Res. 
+Gate Preprint, 2025. 
+ 
+[17] A. G. O. de Melo, F. C. R. de Jesus, and J. C. E. A. N. S. Filho, "Deep-Framework: A Distributed, Scalable, 
+and Edge-Oriented Framework for Real-Time Analysis of Video Streams," Sensors, vol. 21, no. 12, p. 4045, Jun. 
+2021. 
+ 
+[18] Hugging Face, Transformers: the model-definition framework for state-of-the-art machine learning models. 
+GitHub. [Online]. Available: https://github.com/huggingface/transformers. 
+ 
+[19] Google Cloud, Video AI and intelligence. [Online]. Available: https://cloud.google.com/video-intelligence. 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 24 
+Appendix A: Glossary 
+<Define all the terms necessary to properly interpret the SRS, including acronyms and abbreviations. You may 
+wish to build a separate glossary that spans multiple projects or the entire organization, and just include terms 
+specific to a single project in each SRS.> 
+
+Detectra AI 
+F25AI009 
+SDP Phase I (RS) 
+Page 25 
+Appendix B: IV & V Report 
+(Independent verification & validation) 
+IV & V Resource 
+ 
+ 
+Name  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Signature 
+ 
+ 
+ 
+S# 
+Defect Description 
+Origin Stage 
+Status 
+Fix Time 
+Hours 
+Minutes 
+1 
+ 
+ 
+ 
+ 
+ 
+2 
+ 
+ 
+ 
+ 
+ 
+3 
+ 
+ 
+ 
+ 
+ 
+… 
+ 
+ 
+ 
+ 
+ 
+Table 3: List of non-trivial defects 
+ 
+ 
+ 
+

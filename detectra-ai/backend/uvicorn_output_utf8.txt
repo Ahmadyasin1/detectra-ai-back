@@ -1,0 +1,32 @@
+﻿.\venv\Scripts\uvicorn 
+: INFO:     Started 
+server process [37324]
+At line:1 char:1
++ 
+.\venv\Scripts\uvicorn 
+app.main:app > 
+uvicorn_output.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (INFO:     Sta   
+ rted server proces    
+s [37324]:String)     
+[], RemoteExceptio    n
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+INFO:     Waiting for 
+application startup.
+2026-04-06T08:13:57.700094Z [info     ] Starting Detectra AI           env=development version=1.0.0
+2026-04-06T08:13:57.701096Z [info     ] Database tables ensured       
+2026-04-06T08:13:57.701096Z [info     ] Detectra AI startup complete  
+INFO:     Application 
+startup complete.
+INFO:     Uvicorn 
+running on 
+http://127.0.0.1:8000 
+(Press CTRL+C to quit)

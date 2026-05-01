@@ -1,0 +1,198 @@
+{
+  "2028c101": {
+    "job_id": "2028c101",
+    "video_name": "424-136184216.mp4",
+    "video_path": "uploads\\2028c101.mp4",
+    "user_id": "anonymous",
+    "status": "completed",
+    "progress": 100.0,
+    "stage": "completed",
+    "created_at": "2026-05-01T17:52:05.025929+00:00",
+    "started_at": "2026-05-01T17:52:05.026928+00:00",
+    "completed_at": "2026-05-01T17:53:08.334734+00:00",
+    "error": null,
+    "result": {
+      "duration_s": 11.0,
+      "width": 1920,
+      "height": 1080,
+      "fps": 24.0,
+      "total_frames": 264,
+      "speech_segments": [],
+      "audio_events": [],
+      "fusion_insights": [
+        {
+          "window_start_s": 0.0,
+          "window_end_s": 2.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.867633581161499,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~1 persons, primary action: appearing. Audio: silence."
+        },
+        {
+          "window_start_s": 2.0,
+          "window_end_s": 4.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.9024983644485474,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~1 persons, primary action: stationary. Audio: silence."
+        },
+        {
+          "window_start_s": 4.0,
+          "window_end_s": 6.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.9016686677932739,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~1 persons, primary action: stationary. Audio: silence."
+        },
+        {
+          "window_start_s": 6.0,
+          "window_end_s": 8.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.7131147980690002,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~1 persons, primary action: standing. Audio: silence."
+        },
+        {
+          "window_start_s": 8.0,
+          "window_end_s": 10.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.5,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~0 persons, primary action: unknown. Audio: silence."
+        },
+        {
+          "window_start_s": 10.0,
+          "window_end_s": 11.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.2,
+          "visual_audio_alignment": 0.5,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "normal",
+          "contributing_factors": [],
+          "description": "Scene: Empty Scene. ~0 persons, primary action: unknown. Audio: silence."
+        }
+      ],
+      "surveillance_events": [
+        {
+          "timestamp_s": 7.0,
+          "event_type": "person_vanished",
+          "severity": "low",
+          "description": "Person #2 disappeared abruptly from scene at t=7.0s",
+          "track_ids": [
+            2
+          ],
+          "confidence": 0.65
+        }
+      ],
+      "unique_track_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        15,
+        16,
+        18,
+        19
+      ],
+      "total_object_count": 123,
+      "class_frequencies": {
+        "car": 55,
+        "person": 22,
+        "umbrella": 23,
+        "handbag": 3,
+        "truck": 8,
+        "potted plant": 12
+      },
+      "action_frequencies": {
+        "appearing": 4,
+        "standing": 5,
+        "stationary": 13
+      },
+      "max_persons_in_frame": 1,
+      "peak_activity_ts": 0.0,
+      "full_transcript": "",
+      "detected_language": "",
+      "detected_language_name": "",
+      "detected_languages": [],
+      "max_concurrent_persons": 1,
+      "summary": "1920x1080 | 11.0s. 11 unique persons; peak 1 at t=0.0s. Action: stationary. Objects: car, umbrella, potted plant, truck, handbag. Logos: Domino's. Risk: NORMAL (max=0.20, 0 alerts, 1 surv events).",
+      "processing_time_s": 62.78213300000061,
+      "video_name": "424-136184216",
+      "risk_level": "LOW",
+      "risk_score": 0.065,
+      "anomaly_timeline": [
+        0.2,
+        0.0,
+        0.2,
+        0.0,
+        0.2,
+        0.0,
+        0.2,
+        0.0,
+        0.2,
+        0.0,
+        0.2,
+        0.0
+      ],
+      "severity_counts": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 1
+      },
+      "top_objects": [
+        {
+          "label": "car",
+          "count": 55
+        },
+        {
+          "label": "umbrella",
+          "count": 23
+        },
+        {
+          "label": "person",
+          "count": 22
+        },
+        {
+          "label": "potted plant",
+          "count": 12
+        },
+        {
+          "label": "truck",
+          "count": 8
+        },
+        {
+          "label": "handbag",
+          "count": 3
+        }
+      ]
+    },
+    "report_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\2028c101_report.html",
+    "labeled_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\2028c101_labeled.mp4",
+    "processing_s": 63.31241420000151
+  }
+}

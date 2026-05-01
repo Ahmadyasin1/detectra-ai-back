@@ -1,0 +1,90 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Detectra AI — Unified Docker Compose
+# Frontend: ./detectra-ai-main   (React + Vite → Nginx static)
+# Backend:  api_server.py        (FastAPI + full AI pipeline)
+# Proxy:    nginx                (production profile only)
+#
+# ── Quick start ────────────────────────────────────────────────────────────────
+#   API only (dev):         docker compose up api
+#   Full stack (dev):       docker compose up api frontend
+#   Production (with nginx):docker compose --profile production up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── FastAPI Backend + AI Pipeline ───────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: detectra-api:v4
+    container_name: detectra_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      API_HOST:   "0.0.0.0"
+      API_PORT:   "8000"
+      UPLOAD_DIR: "/app/uploads"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./analysis_output:/app/analysis_output
+      - ./yolov8s-seg.pt:/app/yolov8s-seg.pt:ro
+      - ./yolov8n-pose.pt:/app/yolov8n-pose.pt:ro
+      - model_cache:/root/.cache   # HuggingFace + torch cache
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s   # allow time for model loading
+
+  # ─── React + Vite Frontend (Nginx static) ────────────────────────────────────
+  frontend:
+    build:
+      context: ./detectra-ai-main
+      dockerfile: Dockerfile
+      args:
+        # Supabase credentials are baked into the Vite bundle at build time
+        VITE_SUPABASE_URL:      "${VITE_SUPABASE_URL}"
+        VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
+        VITE_HF_TOKEN:          "${VITE_HF_TOKEN:-}"
+    image: detectra-frontend:v4
+    container_name: detectra_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ─── Nginx Reverse Proxy (production only) ────────────────────────────────────
+  # Start with:  docker compose --profile production up -d
+  # Routes all traffic through port 80:
+  #   /api, /health, /ws  →  api:8000
+  #   everything else     →  frontend:80
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: detectra_nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - api
+      - frontend
+    profiles:
+      - production
+
+volumes:
+  model_cache:
+  nginx_logs:
