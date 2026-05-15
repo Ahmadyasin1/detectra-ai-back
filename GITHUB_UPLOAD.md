@@ -1,5 +1,15 @@
 # GitHub upload guide (detectra-ai-back)
 
+## Heroku “No requirements.txt” / Python buildpack error
+
+Your log shows **`Heroku-24` + `heroku/python`**. That ignores `heroku.yml` and `Dockerfile.heroku`.
+
+**Recommended (ML API):** Heroku Dashboard → app **Settings** → **Stack** → **container** → remove all buildpacks → redeploy. Build log should mention **Docker**, not buildpacks.
+
+**Fallback:** Root `requirements.txt` + `Procfile` + `Aptfile` were added for Python buildpack (may hit slug size limits; use **Standard-2x** dyno).
+
+---
+
 You uploaded files with **“Add files via upload”**. That works, but the repo must match what Docker/Heroku expect.
 
 Your UI (`detectra-ai-main`) talks to **`api_server.py`**, not the optional `backend/` Postgres API.

@@ -1,0 +1,22 @@
+# Keep Heroku slug small (buildpack deploys only)
+detectra-ai/
+detectra-ai-main/
+backend/
+backend_clean/
+app/
+alembic/
+docker/
+nginx/
+notebooks/
+scripts/
+supabase/
+uploads/
+test videos/
+*.pt
+*.mp4
+*.pdf
+*.doc
+*.html
+*.zip
+jobs_db.sqlite3
+package-lock.json

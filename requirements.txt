@@ -1,0 +1,7 @@
+# Heroku Python buildpack (expects this exact filename at repo root).
+# For ML/video workloads, prefer Container stack + Dockerfile.heroku (see heroku.yml).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+
+-r requirements.api.txt
