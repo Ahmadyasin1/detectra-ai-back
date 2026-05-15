@@ -91,8 +91,11 @@ API_HOST        = os.getenv("API_HOST", "0.0.0.0")
 API_PORT        = int(os.getenv("PORT", os.getenv("API_PORT", "8000")))
 WARMUP_MODELS   = os.getenv("WARMUP_MODELS", "1").strip().lower() in ("1", "true", "yes")
 MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_MB", "500"))
-UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(SCRIPT_DIR / "uploads")))
-OUTPUT_DIR_API  = SCRIPT_DIR / "analysis_output"
+# Heroku has an ephemeral filesystem; use /tmp so uploads + jobs_db survive restarts on the same dyno.
+_DATA_ROOT      = Path(os.getenv("DETECTRA_DATA_DIR", "/tmp/detectra" if os.getenv("DYNO") else str(SCRIPT_DIR)))
+_DATA_ROOT.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(_DATA_ROOT / "uploads")))
+OUTPUT_DIR_API  = Path(os.getenv("OUTPUT_DIR", str(_DATA_ROOT / "analysis_output")))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR_API.mkdir(parents=True, exist_ok=True)
 
@@ -453,7 +456,7 @@ class AnalysisJob:
 
 
 # ── Job persistence ───────────────────────────────────────────────────────────
-JOBS_DB = SCRIPT_DIR / "jobs_db.json"
+JOBS_DB = Path(os.getenv("JOBS_DB_PATH", str(_DATA_ROOT / "jobs_db.json")))
 
 def _save_jobs():
     """Serialize the in-memory job store to a JSON file."""
@@ -869,6 +872,9 @@ def _run_analysis_worker(job_id: str):
 async def lifespan(_app: FastAPI):
     global _loop
     _loop = asyncio.get_running_loop()
+    _load_jobs()
+    print(f"  [DB] Jobs loaded: {len(_jobs)} from {JOBS_DB}")
+    print(f"  [DB] Upload dir: {UPLOAD_DIR} | Supabase backend: {_supabase_enabled()}")
     if WARMUP_MODELS:
         _loop.create_task(_preload_models())
     else:
@@ -912,6 +918,10 @@ async def health():
         "models_loaded": _analyzer is not None,
         "active_jobs": len(active_jobs),
         "total_jobs": len(_jobs),
+        "jobs_db": str(JOBS_DB),
+        "upload_dir": str(UPLOAD_DIR),
+        "supabase_configured": _supabase_enabled(),
+        "on_heroku": bool(os.getenv("DYNO")),
     }
 
 
