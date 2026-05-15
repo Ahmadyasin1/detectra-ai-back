@@ -153,5 +153,6 @@ ALLOWED_ORIGINS=https://your-frontend-domain.com
 
 **🎉 Your Detectra AI project is now ready for production deployment!**
 
-Choose your preferred hosting platform and follow the deployment guides. The application includes comprehensive AI video analysis capabilities with a modern, professional interface.</content>
-<parameter name="filePath">f:\working\New FYP Ahmad Using Antigravity and Claude\DEPLOYMENT_READY_SUMMARY.md
+Choose your preferred hosting platform and follow the deployment guides. The application includes comprehensive AI video analysis capabilities with a modern, professional interface.
+
+For Docker deployment details, see `detectra-ai/DEPLOYMENT.md`.

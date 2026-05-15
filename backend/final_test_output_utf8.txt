@@ -1,0 +1,270 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.6, pytest-9.0.2, pluggy-1.6.0 -- F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\backend\venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\backend
+plugins: anyio-4.13.0
+collecting ... collected 22 items
+
+tests/test_auth.py::test_register_success ERROR                          [  4%]
+tests/test_auth.py::test_register_duplicate_email ERROR                  [  9%]
+tests/test_auth.py::test_register_weak_password ERROR                    [ 13%]
+tests/test_auth.py::test_login_success ERROR                             [ 18%]
+tests/test_auth.py::test_login_wrong_password ERROR                      [ 22%]
+tests/test_auth.py::test_get_me ERROR                                    [ 27%]
+tests/test_auth.py::test_get_me_unauthenticated ERROR                    [ 31%]
+tests/test_auth.py::test_update_profile ERROR                            [ 36%]
+tests/test_auth.py::test_refresh_token ERROR                             [ 40%]
+tests/test_pipeline.py::test_frame_dataclass PASSED                      [ 45%]
+tests/test_pipeline.py::test_video_metadata_dataclass PASSED             [ 50%]
+tests/test_pipeline.py::test_preprocessor_resize PASSED                  [ 54%]
+tests/test_pipeline.py::test_preprocessor_bgr_to_rgb PASSED              [ 59%]
+tests/test_pipeline.py::test_object_detector_no_detections PASSED        [ 63%]
+tests/test_pipeline.py::test_logo_recognizer_no_model PASSED             [ 68%]
+tests/test_pipeline.py::test_speech_recognizer_missing_file PASSED       [ 72%]
+tests/test_pipeline.py::test_audio_classifier_missing_file PASSED        [ 77%]
+tests/test_pipeline.py::test_fusion_rule_based_empty PASSED              [ 81%]
+tests/test_pipeline.py::test_fusion_rule_based_with_data PASSED          [ 86%]
+tests/test_pipeline.py::test_password_hashing FAILED                     [ 90%]
+tests/test_pipeline.py::test_jwt_create_decode PASSED                    [ 95%]
+tests/test_pipeline.py::test_jwt_invalid PASSED                          [100%]
+
+=================================== ERRORS ====================================
+___________________ ERROR at setup of test_register_success ___________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E1C461010>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+_______________ ERROR at setup of test_register_duplicate_email _______________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8D5B0>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+________________ ERROR at setup of test_register_weak_password ________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8DFA0>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+____________________ ERROR at setup of test_login_success _____________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8D610>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+_________________ ERROR at setup of test_login_wrong_password _________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8EB10>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+________________________ ERROR at setup of test_get_me ________________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8D790>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+________________ ERROR at setup of test_get_me_unauthenticated ________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8F740>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+____________________ ERROR at setup of test_update_profile ____________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AA8D9D0>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+____________________ ERROR at setup of test_refresh_token _____________________
+
+db = <sqlalchemy.orm.session.Session object at 0x0000020E4AB182F0>
+
+    @pytest.fixture
+    def client(db):
+        def override_get_db():
+            try:
+                yield db
+            finally:
+                pass
+    
+>       app.dependency_overrides[get_db] = override_get_db
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'app' has no attribute 'dependency_overrides'
+
+tests\conftest.py:51: AttributeError
+================================== FAILURES ===================================
+____________________________ test_password_hashing ____________________________
+
+    def test_password_hashing():
+        from app.core.security import hash_password, verify_password
+>       hashed = hash_password("mysecretpassword")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_pipeline.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+app\core\security.py:13: in hash_password
+    return pwd_context.hash(password)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\context.py:2258: in hash
+    return record.hash(secret, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\utils\handlers.py:779: in hash
+    self.checksum = self._calc_checksum(secret)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\handlers\bcrypt.py:591: in _calc_checksum
+    self._stub_requires_backend()
+venv\Lib\site-packages\passlib\utils\handlers.py:2254: in _stub_requires_backend
+    cls.set_backend()
+venv\Lib\site-packages\passlib\utils\handlers.py:2156: in set_backend
+    return owner.set_backend(name, dryrun=dryrun)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\utils\handlers.py:2163: in set_backend
+    return cls.set_backend(name, dryrun=dryrun)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\utils\handlers.py:2188: in set_backend
+    cls._set_backend(name, dryrun)
+venv\Lib\site-packages\passlib\utils\handlers.py:2311: in _set_backend
+    super(SubclassBackendMixin, cls)._set_backend(name, dryrun)
+venv\Lib\site-packages\passlib\utils\handlers.py:2224: in _set_backend
+    ok = loader(**kwds)
+         ^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\handlers\bcrypt.py:626: in _load_backend_mixin
+    return mixin_cls._finalize_backend_mixin(name, dryrun)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\handlers\bcrypt.py:421: in _finalize_backend_mixin
+    if detect_wrap_bug(IDENT_2A):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\handlers\bcrypt.py:380: in detect_wrap_bug
+    if verify(secret, bug_hash):
+       ^^^^^^^^^^^^^^^^^^^^^^^^
+venv\Lib\site-packages\passlib\utils\handlers.py:792: in verify
+    return consteq(self._calc_checksum(secret), chk)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <passlib.handlers.bcrypt._BcryptBackend object at 0x0000020E4ABEF290>
+secret = b'01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345...7890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234'
+
+    def _calc_checksum(self, secret):
+        # bcrypt behavior:
+        #   secret must be bytes
+        #   config must be ascii bytes
+        #   returns ascii bytes
+        secret, ident = self._prepare_digest_args(secret)
+        config = self._get_config(ident)
+        if isinstance(config, unicode):
+            config = config.encode("ascii")
+>       hash = _bcrypt.hashpw(secret, config)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+
+venv\Lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError
+------------------------------ Captured log call ------------------------------
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\backend\venv\Lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+=========================== short test summary info ===========================
+FAILED tests/test_pipeline.py::test_password_hashing - ValueError: password c...
+ERROR tests/test_auth.py::test_register_success - AttributeError: module 'app...
+ERROR tests/test_auth.py::test_register_duplicate_email - AttributeError: mod...
+ERROR tests/test_auth.py::test_register_weak_password - AttributeError: modul...
+ERROR tests/test_auth.py::test_login_success - AttributeError: module 'app' h...
+ERROR tests/test_auth.py::test_login_wrong_password - AttributeError: module ...
+ERROR tests/test_auth.py::test_get_me - AttributeError: module 'app' has no a...
+ERROR tests/test_auth.py::test_get_me_unauthenticated - AttributeError: modul...
+ERROR tests/test_auth.py::test_update_profile - AttributeError: module 'app' ...
+ERROR tests/test_auth.py::test_refresh_token - AttributeError: module 'app' h...
+=================== 1 failed, 12 passed, 9 errors in 0.26s ====================
