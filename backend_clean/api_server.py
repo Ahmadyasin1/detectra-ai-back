@@ -87,8 +87,7 @@ _start_time = time.perf_counter()
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 API_HOST        = os.getenv("API_HOST", "0.0.0.0")
-# Heroku sets PORT; local Docker uses API_PORT
-API_PORT        = int(os.getenv("PORT", os.getenv("API_PORT", "8000")))
+API_PORT        = int(os.getenv("API_PORT", "8000"))
 MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_MB", "500"))
 UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(SCRIPT_DIR / "uploads")))
 OUTPUT_DIR_API  = SCRIPT_DIR / "analysis_output"

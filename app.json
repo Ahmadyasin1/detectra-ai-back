@@ -1,0 +1,19 @@
+{
+  "name": "Detectra AI API",
+  "description": "Multimodal video analysis API (api_server.py). Requires Heroku Container stack.",
+  "repository": "https://github.com/Ahmadyasin1/detectra-ai-back",
+  "stack": "container",
+  "environments": {
+    "review": {
+      "env": {
+        "ALLOWED_ORIGINS": "*",
+        "WARMUP_MODELS": "0"
+      }
+    },
+    "production": {
+      "env": {
+        "WARMUP_MODELS": "0"
+      }
+    }
+  }
+}

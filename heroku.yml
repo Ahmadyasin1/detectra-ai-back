@@ -1,0 +1,7 @@
+# Heroku Container — GitHub repo root (Ahmadyasin1/detectra-ai-back)
+# Requires these files at repo root: api_server.py, requirements.api.txt, Dockerfile.heroku
+# Dashboard: Settings → Stack → container
+
+build:
+  docker:
+    web: Dockerfile.heroku

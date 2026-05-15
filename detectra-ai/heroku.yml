@@ -1,0 +1,4 @@
+# Use this file if the GitHub repo root IS the detectra-ai folder (not the parent monorepo).
+build:
+  docker:
+    web: Dockerfile.heroku

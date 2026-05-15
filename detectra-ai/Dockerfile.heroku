@@ -1,0 +1,33 @@
+# Detectra AI — Heroku Container (ML API)
+# Binds to $PORT assigned by Heroku (required).
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.api.txt ./
+RUN pip install --no-cache-dir \
+    torch torchvision \
+    --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -r requirements.api.txt
+
+COPY api_server.py analyze_videos.py detectra_accuracy.py dashboard.html ./
+RUN mkdir -p uploads analysis_output
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    API_HOST=0.0.0.0 \
+    UPLOAD_DIR=/app/uploads
+
+# Heroku injects PORT at runtime; api_server.py reads PORT first
+CMD ["/bin/sh", "-c", "mkdir -p \"${UPLOAD_DIR:-/app/uploads}\" /app/analysis_output && exec python -u api_server.py"]

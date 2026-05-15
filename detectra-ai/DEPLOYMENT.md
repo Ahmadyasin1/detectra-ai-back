@@ -146,7 +146,19 @@ Deploy on **DigitalOcean GPU Droplets**, **Azure NC-series**, or any host with N
 
 ---
 
-## 6. Cloud deployment
+## 6. Heroku (Container)
+
+Heroku **cannot** auto-detect Node/Python when the app lives in `detectra-ai/`. Use the **container** stack and root `heroku.yml`. See **[HEROKU.md](./HEROKU.md)**.
+
+```bash
+heroku stack:set container -a detectra-ai
+```
+
+Minimum dyno: **standard-2x** or higher (ML RAM). Frontend: Vercel or a second Heroku app.
+
+---
+
+## 7. Cloud deployment
 
 ### Single VM (recommended for FYP / demo)
 
@@ -172,7 +184,7 @@ Set `ALLOWED_ORIGINS` to your Vercel URL.
 
 ---
 
-## 7. Supabase setup
+## 8. Supabase setup
 
 1. Run SQL in `supabase/migrations/`.
 2. Create storage bucket `videos` (see `002_storage_videos_bucket.sql`).
@@ -182,7 +194,7 @@ Set `ALLOWED_ORIGINS` to your Vercel URL.
 
 ---
 
-## 8. Post-deploy checklist
+## 9. Post-deploy checklist
 
 - [ ] `curl http://localhost:8000/health` → `200`
 - [ ] App loads; Analyzer shows **API ONLINE**
@@ -193,7 +205,7 @@ Set `ALLOWED_ORIGINS` to your Vercel URL.
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
@@ -216,7 +228,7 @@ cd detectra-ai
 
 ---
 
-## 10. Student Pack hosts
+## 11. Student Pack hosts
 
 - **DigitalOcean:** GPU Droplet + this compose file.
 - **Azure:** NC-series VM + NVIDIA toolkit + `docker-compose.gpu.yml`.

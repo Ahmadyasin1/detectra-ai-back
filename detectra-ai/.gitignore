@@ -27,6 +27,7 @@ uploads/
 analysis_output/
 *.mp4
 jobs_db.json
+jobs_db.sqlite3
 
 # Node
 node_modules/
