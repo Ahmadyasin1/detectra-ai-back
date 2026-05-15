@@ -1,0 +1,37 @@
+
+> detecra-ai@1.0.0 lint
+> eslint .
+
+
+F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\detectra-ai-main\src\components\AuthModal.tsx
+  119:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\detectra-ai-main\src\lib\detectraApi.ts
+  155:78  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  206:3   error  '_onProgress' is defined but never used   @typescript-eslint/no-unused-vars
+  219:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  228:15  error  Empty block statement                     no-empty
+
+F:\working\New FYP Ahmad Using Antigravity and Claude\detectra-ai\detectra-ai-main\src\pages\Dashboard.tsx
+   74:42  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+   94:48  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+   99:34  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  100:34  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  101:34  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  159:19  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  200:6   warning  React Hook useCallback has a missing dependency: 'loadJobData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  213:13  error    Empty block statement                                                                                             no-empty
+  247:35  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  248:35  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  251:21  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  272:25  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  288:37  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  317:69  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  323:34  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  348:77  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  385:34  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  405:64  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+  670:55  error    Unexpected any. Specify a different type                                                                          @typescript-eslint/no-explicit-any
+
+✖ 24 problems (23 errors, 1 warning)
+

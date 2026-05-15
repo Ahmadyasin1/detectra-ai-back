@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detectra AI - Ultra Professional Gantt Chart</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.05);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 3.2em;
+            margin-bottom: 15px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #e8f4fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 1.4em;
+            opacity: 0.9;
+            font-weight: 400;
+            margin-bottom: 8px;
+        }
+
+        .header .timeline-info {
+            font-size: 1.1em;
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        .gantt-container {
+            padding: 40px;
+            overflow-x: auto;
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        .timeline-header {
+            display: grid;
+            grid-template-columns: 350px repeat(12, 1fr);
+            gap: 3px;
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 15px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .timeline-header > div {
+            padding: 20px 15px;
+            text-align: center;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            border-right: 1px solid rgba(255,255,255,0.1);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .timeline-header > div:first-child {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .phase-row {
+            display: grid;
+            grid-template-columns: 350px repeat(12, 1fr);
+            gap: 3px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+
+        .phase-label {
+            padding: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            color: #1e293b;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .phase-label::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 12px 0 0 12px;
+        }
+
+        .phase-bar {
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .phase-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        .phase-bar:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+        }
+
+        .phase-1 {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 50%, #1e40af 100%);
+        }
+
+        .phase-2 {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+        }
+
+        .phase-3 {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+        }
+
+        .phase-4 {
+            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+        }
+
+        .task-row {
+            display: grid;
+            grid-template-columns: 350px repeat(12, 1fr);
+            gap: 3px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .task-label {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #475569;
+            margin-left: 25px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            position: relative;
+        }
+
+        .task-label::before {
+            content: '•';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #3b82f6;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .task-bar {
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .task-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%);
+            border-radius: 6px;
+            pointer-events: none;
+        }
+
+        .task-bar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .status-completed {
+            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+            position: relative;
+        }
+
+        .status-completed::after {
+            content: '✓';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .status-in-progress {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+            animation: pulse 2s infinite;
+            position: relative;
+        }
+
+        .status-in-progress::after {
+            content: '●';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 12px;
+            animation: blink 1.5s infinite;
+        }
+
+        .status-planned {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 50%, #374151 100%);
+            position: relative;
+        }
+
+        .status-planned::after {
+            content: '○';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 40px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #374151;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-label {
+            font-size: 1em;
+            opacity: 0.9;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .export-section {
+            margin-top: 40px;
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            border-radius: 15px;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .timeline-header,
+            .phase-row,
+            .task-row {
+                grid-template-columns: 200px repeat(12, 1fr);
+            }
+            
+            .phase-label,
+            .task-label {
+                font-size: 12px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Detectra AI</h1>
+                <p class="subtitle">Multimodal AI Surveillance System</p>
+                <p class="timeline-info">Project Timeline: August 2025 - July 2026</p>
+            </div>
+        </div>
+
+        <div class="gantt-container">
+            <div class="timeline-header">
+                <div>Phase / Task</div>
+                <div>Aug</div>
+                <div>Sep</div>
+                <div>Oct</div>
+                <div>Nov</div>
+                <div>Dec</div>
+                <div>Jan</div>
+                <div>Feb</div>
+                <div>Mar</div>
+                <div>Apr</div>
+                <div>May</div>
+                <div>Jun</div>
+                <div>Jul</div>
+            </div>
+
+            <!-- Phase 1 -->
+            <div class="phase-row">
+                <div class="phase-label">Phase 1: Project Proposal & SRS Documentation</div>
+                <div class="phase-bar phase-1" style="grid-column: 2 / 5;">Aug - Oct 2025</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Proposal Preparation & Approval</div>
+                <div class="task-bar status-completed" style="grid-column: 2 / 3;">Completed</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Requirement Elicitation & Feasibility Study</div>
+                <div class="task-bar status-completed" style="grid-column: 2 / 4;">Completed</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">SRS Document Development</div>
+                <div class="task-bar status-in-progress" style="grid-column: 3 / 5;">In Progress</div>
+            </div>
+
+            <!-- Phase 2 -->
+            <div class="phase-row">
+                <div class="phase-label">Phase 2: System Design & Dataset Preparation</div>
+                <div class="phase-bar phase-2" style="grid-column: 5 / 8;">Nov 2025 - Jan 2026</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Literature Review & Dataset Collection</div>
+                <div class="task-bar status-planned" style="grid-column: 5 / 7;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Data Cleaning & Annotation</div>
+                <div class="task-bar status-planned" style="grid-column: 5 / 7;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Architecture & Model Design</div>
+                <div class="task-bar status-planned" style="grid-column: 6 / 8;">Planned</div>
+            </div>
+
+            <!-- Phase 3 -->
+            <div class="phase-row">
+                <div class="phase-label">Phase 3: Implementation & Integration</div>
+                <div class="phase-bar phase-3" style="grid-column: 8 / 11;">Feb - Apr 2026</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Object Detection & Logo Recognition Module</div>
+                <div class="task-bar status-planned" style="grid-column: 8 / 10;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Motion/Action Recognition Module</div>
+                <div class="task-bar status-planned" style="grid-column: 8 / 10;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Audio Analysis (Speech + Environmental)</div>
+                <div class="task-bar status-planned" style="grid-column: 9 / 11;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Multimodal Fusion Engine</div>
+                <div class="task-bar status-planned" style="grid-column: 10 / 11;">Planned</div>
+            </div>
+
+            <!-- Phase 4 -->
+            <div class="phase-row">
+                <div class="phase-label">Phase 4: Testing, Evaluation & Deployment</div>
+                <div class="phase-bar phase-4" style="grid-column: 11 / 14;">May - Jul 2026</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Web Dashboard Development</div>
+                <div class="task-bar status-planned" style="grid-column: 11 / 13;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">System Testing & Optimization</div>
+                <div class="task-bar status-planned" style="grid-column: 12 / 14;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Documentation & Final Deployment</div>
+                <div class="task-bar status-planned" style="grid-column: 13 / 14;">Planned</div>
+            </div>
+
+            <div class="task-row">
+                <div class="task-label">Presentation & Viva Preparation</div>
+                <div class="task-bar status-planned" style="grid-column: 13 / 14;">Planned</div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);"></div>
+                    <span>Completed</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);"></div>
+                    <span>In Progress</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);"></div>
+                    <span>Planned</span>
+                </div>
+            </div>
+
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <div class="stat-number">12</div>
+                    <div class="stat-label">Months Duration</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Major Phases</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">Key Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">90%</div>
+                    <div class="stat-label">Phase 1 Complete</div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3 style="margin-bottom: 20px; color: #374151; font-weight: 600;">Export Options</h3>
+                <button class="export-btn" onclick="exportAsImage()">📸 Export as Image</button>
+                <button class="export-btn" onclick="exportAsPDF()" style="margin-left: 15px;">📄 Export as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactive features
+        document.addEventListener('DOMContentLoaded', function() {
+            const taskBars = document.querySelectorAll('.task-bar');
+            
+            taskBars.forEach(bar => {
+                bar.addEventListener('click', function() {
+                    const taskLabel = this.parentElement.querySelector('.task-label').textContent;
+                    const status = this.textContent.replace(/[✓●○]/g, '').trim();
+                    showTaskDetails(taskLabel, status);
+                });
+            });
+
+            // Add hover effects for phase bars
+            const phaseBars = document.querySelectorAll('.phase-bar');
+            phaseBars.forEach(bar => {
+                bar.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                });
+                
+                bar.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+        });
+
+        function showTaskDetails(taskName, status) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                max-width: 500px;
+                text-align: center;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            `;
+            
+            content.innerHTML = `
+                <h3 style="margin-bottom: 15px; color: #1e293b;">Task Details</h3>
+                <p style="margin-bottom: 10px; font-size: 16px;"><strong>Task:</strong> ${taskName}</p>
+                <p style="margin-bottom: 20px; font-size: 16px;"><strong>Status:</strong> ${status}</p>
+                <button onclick="this.parentElement.parentElement.remove()" style="
+                    background: #3b82f6;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                ">Close</button>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        function exportAsImage() {
+            const container = document.querySelector('.container');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size for high resolution
+            const scale = 2;
+            canvas.width = container.offsetWidth * scale;
+            canvas.height = container.offsetHeight * scale;
+            ctx.scale(scale, scale);
+            
+            // Use html2canvas for better quality
+            if (typeof html2canvas !== 'undefined') {
+                html2canvas(container, {
+                    scale: scale,
+                    useCORS: true,
+                    allowTaint: true
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'detectra-ai-gantt-chart.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            } else {
+                // Fallback method
+                const link = document.createElement('a');
+                link.download = 'detectra-ai-gantt-chart.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        }
+
+        function exportAsPDF() {
+            window.print();
+        }
+
+        // Add print styles
+        const printStyles = document.createElement('style');
+        printStyles.textContent = `
+            @media print {
+                body { background: white !important; }
+                .container { box-shadow: none !important; }
+                .export-section { display: none !important; }
+                .task-bar:hover, .phase-bar:hover { transform: none !important; }
+            }
+        `;
+        document.head.appendChild(printStyles);
+    </script>
+</body>
+</html>
