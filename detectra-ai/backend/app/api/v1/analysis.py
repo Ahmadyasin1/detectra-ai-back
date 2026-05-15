@@ -76,8 +76,8 @@ def start_analysis(
     db.refresh(job)
 
     # Dispatch Celery task
-    from app.workers.celery_app import celery_app  # noqa: F401
     from app.services.pipeline.orchestrator import run_analysis_pipeline
+    from app.workers.celery_app import celery_app  # noqa: F401
 
     task = run_analysis_pipeline.apply_async(
         args=[job.id, video.file_path, request.config.model_dump()],
@@ -213,7 +213,7 @@ def list_video_jobs(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[AnalysisJob]:
-    video = _get_video_or_raise(video_id, current_user, db)
+    _get_video_or_raise(video_id, current_user, db)
     jobs = (
         db.query(AnalysisJob)
         .filter(AnalysisJob.video_id == video_id)

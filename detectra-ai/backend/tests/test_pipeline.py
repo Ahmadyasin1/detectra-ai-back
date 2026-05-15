@@ -1,8 +1,8 @@
 """Unit tests for AI pipeline services (CPU, no GPU required)."""
-import numpy as np
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import numpy as np
 
 
 # ─── Preprocessor ────────────────────────────────────────────────────────────
@@ -37,22 +37,31 @@ def test_preprocessor_bgr_to_rgb():
 
 # ─── Object Detector ─────────────────────────────────────────────────────────
 def test_object_detector_no_detections():
-    """Detector should return empty list when no objects found."""
+    """Detector should return per-frame results with empty detections when no objects found."""
     from app.services.pipeline.object_detector import ObjectDetectorService
     from app.services.pipeline.preprocessor import Frame
 
     detector = ObjectDetectorService()
 
-    # Mock YOLO model
     mock_pred = MagicMock()
     mock_pred.boxes = None
-    mock_model = MagicMock(return_value=[mock_pred])
-    mock_model.names = {0: "person"}
+    mock_pred.masks = None
+    mock_pred.names = {}
 
-    with patch.object(ObjectDetectorService, "_load_model", return_value=mock_model):
-        frames = [Frame(timestamp_s=0.0, image=np.zeros((224,224,3), dtype=np.uint8), frame_index=0)]
+    mock_seg = MagicMock()
+    mock_seg.track.return_value = [mock_pred]
+
+    mock_pose = MagicMock(return_value=[MagicMock(keypoints=None, boxes=[])])
+
+    with patch.object(ObjectDetectorService, "_load_models"):
+        ObjectDetectorService._seg_model = mock_seg
+        ObjectDetectorService._pose_model = mock_pose
+        frames = [Frame(timestamp_s=0.0, image=np.zeros((224, 224, 3), dtype=np.uint8), frame_index=0)]
         results = detector.detect(frames)
-    assert results == []
+
+    assert len(results) == 1
+    assert results[0]["data"]["detections"] == []
+    assert results[0]["data"]["person_count"] == 0
 
 
 # ─── Logo Recognizer ─────────────────────────────────────────────────────────

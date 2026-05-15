@@ -25,7 +25,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ─── Surveillance Alert Rules ─────────────────────────────────────────────────
 
 # Audio events mapped to base anomaly scores
@@ -270,7 +269,7 @@ class AnomalyDetector:
                     if s > score:
                         score = s
                         anomaly_type = "distress_speech"
-                    signals.append(f"speech:distress_keyword")
+                    signals.append("speech:distress_keyword")
                     description_parts.append(
                         f"Distress keywords in speech: {', '.join(matched)}"
                     )

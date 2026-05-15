@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Brain, Target, Award, Users, Clock, Eye, Zap } from 'lucide-react';
+import PageHero from '../components/PageHero';
 
 export default function Project() {
   const ref = useRef(null);
@@ -23,7 +24,7 @@ export default function Project() {
     {
       icon: Award,
       title: 'Supervisor',
-      content: 'Dr. Usman Aamer, Director of FOIT, University of Central Punjab',
+      content: 'Phases 1-2: Dr. Usman Aamer (Director FOIT, UCP) · Phases 3-4: Dr. Yasin Nasir (UCP)',
       color: 'from-violet-600 to-cyan-500',
     },
     {
@@ -74,27 +75,16 @@ export default function Project() {
   ];
 
   return (
-    <div className="pt-20">
-      {/* Hero Section */}
-      <section className="py-20 sm:py-32 bg-gradient-to-b from-gray-950 to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_var(--tw-gradient-stops))] from-cyan-500/5 via-transparent to-transparent" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-              FYP <span className="bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">Project</span>
-            </h1>
-            <p className="text-gray-300 text-xl max-w-3xl mx-auto">
-              A comprehensive multimodal video intelligence platform for autonomous video analysis
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Project overview"
+        badgeIcon={Brain}
+        title="FYP"
+        titleAccent="Project"
+        description="A comprehensive multimodal video intelligence platform for autonomous video analysis."
+      >
+        <div className="w-full max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {projectDetails.map((detail, index) => (
               <motion.div
                 key={detail.title}
@@ -120,7 +110,7 @@ export default function Project() {
             ))}
           </div>
         </div>
-      </section>
+      </PageHero>
 
       {/* Objectives Section */}
       <section className="py-20 sm:py-32 bg-white/5 backdrop-blur-md relative overflow-hidden">

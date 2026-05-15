@@ -5,7 +5,7 @@ import {
   AlertTriangle, Loader2, Info,
 } from 'lucide-react';
 import { chatWithVideo, buildVideoContext, ChatMessage } from '../lib/hfApi';
-import type { AnalysisResult } from '../lib/detectraApi';
+import { askJobQuestion, type AnalysisResult } from '../lib/detectraApi';
 
 // ── Pre-built questions ───────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function AIAssistant({ result }: { result: AnalysisResult }) {
+export default function AIAssistant({ result, jobId }: { result: AnalysisResult; jobId?: string }) {
   const [messages, setMessages]   = useState<ChatMessage[]>([]);
   const [input, setInput]         = useState('');
   const [loading, setLoading]     = useState(false);
@@ -101,9 +101,19 @@ export default function AIAssistant({ result }: { result: AnalysisResult }) {
     setLoading(true);
 
     try {
-      const reply = await chatWithVideo(context, newHistory);
-      if (!reply) throw new Error('Empty response from AI — please try again.');
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      let reply: string;
+      if (jobId) {
+        try {
+          const r = await askJobQuestion(jobId, trimmed);
+          reply = r.answer;
+        } catch {
+          reply = await chatWithVideo(context, newHistory);
+        }
+      } else {
+        reply = await chatWithVideo(context, newHistory);
+      }
+      if (!reply?.trim()) throw new Error('Empty response from AI — please try again.');
+      setMessages(prev => [...prev, { role: 'assistant', content: reply.trim() }]);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to get AI response';
       setError(msg);
@@ -133,7 +143,9 @@ export default function AIAssistant({ result }: { result: AnalysisResult }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-white font-semibold text-sm leading-none">AI Video Assistant</p>
-          <p className="text-gray-500 text-xs mt-0.5">Mistral-7B · Open-source LLM · HuggingFace</p>
+          <p className="text-gray-500 text-xs mt-0.5">
+            {jobId ? 'Server RAG + Mistral (Detectra API)' : 'Mistral-7B · HuggingFace Inference'}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
@@ -165,9 +177,18 @@ export default function AIAssistant({ result }: { result: AnalysisResult }) {
             className="overflow-hidden flex-shrink-0"
           >
             <div className="px-5 py-3 bg-purple-500/8 border-b border-purple-500/20 text-xs text-gray-400 leading-relaxed">
-              This assistant uses <span className="text-purple-300 font-medium">Mistral-7B-Instruct-v0.2</span> — a free open-source LLM from HuggingFace.
-              It has full access to this video's analysis results and can answer questions about detected events, persons, speech, audio, and risk level.
-              Add <code className="px-1 bg-white/10 rounded text-purple-300">VITE_HF_TOKEN</code> in your <code className="px-1 bg-white/10 rounded text-purple-300">.env</code> for higher rate limits.
+              {jobId ? (
+                <>
+                  Questions are sent to your <span className="text-purple-300 font-medium">Detectra API</span> (<code className="px-1 bg-white/10 rounded text-purple-300">/api/jobs/…/ask</code>)
+                  with the same RAG context as the analyzer report. Configure <code className="px-1 bg-white/10 rounded text-purple-300">HF_TOKEN</code> on the server for reliable answers.
+                  If the API is unavailable, the client falls back to direct HuggingFace calls when <code className="px-1 bg-white/10 rounded text-purple-300">VITE_HF_TOKEN</code> is set.
+                </>
+              ) : (
+                <>
+                  This assistant uses <span className="text-purple-300 font-medium">Mistral-7B-Instruct-v0.2</span> via HuggingFace Inference API with analysis context embedded in the prompt.
+                  Add <code className="px-1 bg-white/10 rounded text-purple-300">VITE_HF_TOKEN</code> for higher rate limits. For production, prefer opening results from a completed job so the server-backed RAG path is used.
+                </>
+              )}
             </div>
           </motion.div>
         )}

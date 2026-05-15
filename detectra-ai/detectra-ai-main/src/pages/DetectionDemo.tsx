@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, LayoutDashboard, Eye, Users, Brain, Volume2, Mic,
+  LayoutDashboard, Eye, Users, Brain, Volume2, Mic,
   Shield, Zap, CheckCircle, ArrowRight, Cpu, BarChart3,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import DetectraVideoShowcase from '../components/DetectraVideoShowcase';
 import DetectraLiveAnalysis from '../components/DetectraLiveAnalysis';
+import PageHero, { HeroButtonSecondary } from '../components/PageHero';
 
 // ── Model cards data ──────────────────────────────────────────────────────────
 
@@ -90,100 +91,24 @@ export default function DetectionDemo() {
   return (
     <div className="min-h-screen bg-transparent">
 
-      {/* ── Hero header ── */}
-      <section className="relative pt-24 pb-16 overflow-hidden">
-        {/* Background glows */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(34,211,238,0.07) 0%, transparent 70%)' }} />
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 50% 40% at 90% 90%, rgba(99,102,241,0.05) 0%, transparent 70%)' }} />
-        {/* Grid */}
-        <div className="absolute inset-0 opacity-[0.025] pointer-events-none" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)',
-          backgroundSize: '48px 48px',
-        }} />
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-          {/* Navigation */}
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex items-center justify-between mb-14"
-          >
-            <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors text-sm">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Link>
-            {user && (
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/25 rounded-xl text-cyan-400 hover:bg-cyan-500/18 hover:border-cyan-500/45 transition-all text-sm font-medium"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                My Dashboard
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            )}
-          </motion.div>
-
-          {/* Heading section */}
-          <div className="text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/25 rounded-full text-cyan-400 text-sm font-medium mb-6"
-            >
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              Live demo — powered by real AI models
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.08 }}
-              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-5 leading-tight tracking-tight"
-            >
-              See Detectra AI{' '}
-              <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 bg-clip-text text-transparent">
-                in action
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.16 }}
-              className="text-gray-400 text-lg max-w-2xl mx-auto mb-10"
-            >
-              Upload a video below to trigger the full 6-model multimodal pipeline — then explore
-              the complete interactive analysis report with detections, transcripts, and AI insights.
-            </motion.p>
-
-            {/* Stats row */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.24 }}
-              className="flex items-center justify-center gap-6 sm:gap-10 mb-14 flex-wrap"
-            >
-              {DEMO_STATS.map(({ icon: Icon, value, label, color }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center">
-                    <Icon className={`w-4 h-4 ${color}`} />
-                  </div>
-                  <div className="text-left">
-                    <p className={`text-sm font-bold ${color}`}>{value}</p>
-                    <p className="text-gray-600 text-xs">{label}</p>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-
-            {/* Model cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+      <PageHero
+        backTo={{ href: '/', label: 'Home' }}
+        badge="Live demo — powered by real AI models"
+        title="See Detectra AI"
+        titleAccent="in action"
+        description="Upload a video below to trigger the full v5 multimodal pipeline — then explore the interactive report with detections, transcripts, and fusion insights."
+        stats={DEMO_STATS}
+        actions={
+          user ? (
+            <HeroButtonSecondary to="/analyze" className="gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Open analyzer
+            </HeroButtonSecondary>
+          ) : undefined
+        }
+      >
+        {/* Model cards */}
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
               {MODELS.map((m, i) => (
                 <motion.div
                   key={m.title}
@@ -204,15 +129,13 @@ export default function DetectionDemo() {
                         </span>
                       </div>
                       <p className="text-gray-500 text-xs leading-relaxed mb-2">{m.desc}</p>
-                      <p className="text-gray-700 text-[10px] font-mono">{m.model}</p>
+                      <p className="text-gray-400 text-[10px] font-mono">{m.model}</p>
                     </div>
                   </div>
                 </motion.div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
+        </motion.div>
+      </PageHero>
 
       {/* Divider */}
       <div className="h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent mx-8" />
@@ -276,20 +199,20 @@ export default function DetectionDemo() {
             </h2>
             <p className="text-gray-400 text-base mb-8 max-w-lg mx-auto">
               {user
-                ? 'Head to your dashboard to upload a video and get a full multimodal intelligence report in minutes.'
+                ? 'Open the Analyzer to upload a video and get a full multimodal intelligence report in minutes.'
                 : 'Create a free account and get your first video analysis — no credit card required.'}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               {user ? (
-                <Link to="/dashboard">
+                <Link to="/analyze">
                   <motion.div
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.97 }}
                     className="group inline-flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all"
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    Open Dashboard
+                    Open Analyzer
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                   </motion.div>
                 </Link>

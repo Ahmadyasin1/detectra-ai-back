@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { useFeatureFlag } from './featureFlags';
 
 interface PerformanceMetrics {
@@ -67,13 +67,19 @@ class PerformanceMonitor {
   }
 
   private getMemoryUsage() {
-    if (typeof window !== 'undefined' && (performance as any).memory) {
-      const mem = (performance as any).memory;
-      return {
-        usedJSHeapSize: mem.usedJSHeapSize,
-        totalJSHeapSize: mem.totalJSHeapSize,
-        jsHeapSizeLimit: mem.jsHeapSizeLimit,
-      };
+    if (typeof window !== 'undefined' && 'memory' in performance) {
+      const mem = (performance as Performance & { memory?: {
+        usedJSHeapSize: number;
+        totalJSHeapSize: number;
+        jsHeapSizeLimit: number;
+      }}).memory;
+      if (mem) {
+        return {
+          usedJSHeapSize: mem.usedJSHeapSize,
+          totalJSHeapSize: mem.totalJSHeapSize,
+          jsHeapSizeLimit: mem.jsHeapSizeLimit,
+        };
+      }
     }
     return null;
   }
@@ -100,8 +106,6 @@ class PerformanceMonitor {
 
   measure(name: string, startMark: string, endMark?: string) {
     if (!this.enabled) return;
-
-    const end = endMark || name;
     let duration: number | undefined;
 
     if (performance.measure) {
@@ -109,7 +113,7 @@ class PerformanceMonitor {
         performance.measure(name, startMark, endMark);
         const measures = performance.getEntriesByName(name);
         duration = measures[measures.length - 1]?.duration;
-      } catch (e) {
+      } catch {
         // Fallback to manual calculation
         const start = this.metrics.marks[startMark];
         const end = this.metrics.marks[endMark || name];

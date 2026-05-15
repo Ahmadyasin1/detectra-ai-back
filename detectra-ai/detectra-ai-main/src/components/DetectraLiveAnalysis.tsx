@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import {
   checkHealth, submitVideo, getJobStatus, getJobResult, getWsUrl,
-  AnalysisResult, severityHex,
+  AnalysisResult, distinctPersonCount, severityHex,
   riskTextClass, riskBgClass, fmtSeconds, fmtDuration, anomalyColor,
 } from '../lib/detectraApi';
 
@@ -58,7 +58,7 @@ function ResultSummary({ result, jobId }: { result: AnalysisResult; jobId: strin
   const {
     video_name, duration_s, risk_level, risk_score,
     surveillance_events, fusion_insights, speech_segments,
-    unique_track_ids, summary, top_objects, anomaly_timeline,
+    summary, top_objects, anomaly_timeline,
   } = result;
 
   const criticalEvts = surveillance_events.filter(e => e.severity === 'critical' || e.severity === 'high');
@@ -92,9 +92,9 @@ function ResultSummary({ result, jobId }: { result: AnalysisResult; jobId: strin
       </div>
 
       {/* Quick metrics */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: 'Persons',  value: unique_track_ids.length,     color: 'text-cyan-400' },
+          { label: 'Individuals',  value: distinctPersonCount(result), color: 'text-cyan-400' },
           { label: 'Events',   value: surveillance_events.length,  color: 'text-red-400' },
           { label: 'Insights', value: fusion_insights.length,      color: 'text-pink-400' },
         ].map(({ label, value, color }) => (

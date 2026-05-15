@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Menu, X, User, LogOut, LayoutDashboard, ChevronDown, Network, GitBranch, Target } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Network, GitBranch, Target, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,15 @@ export default function Navbar() {
   }, [handleScroll]);
 
   useEffect(() => {
+    document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (isUserMenuOpen && !(e.target as HTMLElement).closest('.user-menu-container'))
         setIsUserMenuOpen(false);
@@ -40,22 +49,27 @@ export default function Navbar() {
 
   const navItems = [
     { label: 'Home',        href: '/' },
-    { label: 'FYP Project', href: '/fyp-project' },
-    { label: 'Timeline',    href: '/timeline' },
-    { label: 'Research',    href: '/research' },
+    { label: 'Analyzer',    href: '/analyze' },
     { label: 'Demo',        href: '/demo' },
-    { label: 'Team',        href: '/team' },
+    { label: 'Capabilities', href: '/capabilities' },
     { label: 'Pricing',     href: '/pricing' },
     { label: 'Contact',     href: '/contact' },
   ];
 
-  const systemItems = [
+  const productItems = [
+    { label: 'Business Case', href: '/business-case', icon: Briefcase, desc: 'ROI, deployment scenarios, value' },
     { label: 'Architecture', href: '/architecture', icon: Network,   desc: '6-layer system design' },
     { label: 'AI Pipeline',  href: '/pipeline',     icon: GitBranch, desc: '9-stage inference pipeline' },
-    { label: 'Capabilities', href: '/capabilities', icon: Target,    desc: 'Benchmarks & scope limits' },
+    { label: 'Research',     href: '/research',     icon: Target,    desc: 'Datasets, evidence and methodology' },
+    { label: 'Project',      href: '/fyp-project',  icon: Target,    desc: 'Implementation journey and scope' },
   ];
 
-  const isActive = (href: string) => location.pathname === href;
+  const isActive = (href: string) => {
+    if (href === '/analyze') {
+      return location.pathname === '/analyze' || location.pathname.startsWith('/analyze/');
+    }
+    return location.pathname === href;
+  };
 
   const navClass = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
     isScrolled
@@ -76,7 +90,7 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-white font-bold text-lg tracking-tight">Detectra AI</span>
-                <span className="text-gray-500 text-xs font-medium">by Nexariza AI</span>
+                <span className="hidden sm:block text-gray-500 text-xs font-medium">trusted multimodal intelligence</span>
               </div>
             </motion.div>
           </Link>
@@ -107,12 +121,12 @@ export default function Navbar() {
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => setIsSystemMenuOpen(s => !s)}
                 className={`flex items-center gap-1 px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
-                  ['/architecture', '/pipeline', '/capabilities'].some(p => location.pathname === p)
+                  ['/business-case', '/architecture', '/pipeline', '/research', '/fyp-project'].some(p => location.pathname === p)
                     ? 'text-cyan-400 bg-cyan-500/10'
                     : 'text-gray-400 hover:text-white hover:bg-white/20'
                 }`}
               >
-                System
+                Product
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isSystemMenuOpen ? 'rotate-180' : ''}`} />
               </motion.button>
               <AnimatePresence>
@@ -123,7 +137,7 @@ export default function Navbar() {
                     exit={{ opacity: 0, y: -8 }}
                     className="absolute top-full left-0 mt-1.5 w-56 bg-white/5 backdrop-blur-md rounded-xl shadow-2xl border border-white/10 overflow-hidden z-50"
                   >
-                    {systemItems.map(item => (
+                    {productItems.map(item => (
                       <Link key={item.label} to={item.href} onClick={() => setIsSystemMenuOpen(false)}>
                         <div className={`flex items-start gap-3 px-4 py-3 hover:bg-white/20 transition-colors ${
                           isActive(item.href) ? 'bg-cyan-500/10' : ''
@@ -142,22 +156,8 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Desktop auth area */}
+          {/* Desktop auth area — Analyzer lives in main nav; no duplicate shortcut here */}
           <div className="hidden lg:flex items-center gap-2">
-            {user && (
-              <Link to="/dashboard">
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    isActive('/dashboard') || location.pathname.startsWith('/dashboard/')
-                      ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25'
-                      : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20'
-                  }`}
-                >
-                  <LayoutDashboard className="w-4 h-4" />Dashboard
-                </motion.button>
-              </Link>
-            )}
             {user ? (
               <div className="relative user-menu-container">
                 <motion.button
@@ -184,11 +184,6 @@ export default function Navbar() {
                       <Link to="/profile" onClick={() => setIsUserMenuOpen(false)}>
                         <div className="flex items-center gap-2 px-4 py-3 text-gray-300 hover:bg-white/20 hover:text-white transition-colors text-sm">
                           <User className="w-4 h-4" />My Profile
-                        </div>
-                      </Link>
-                      <Link to="/dashboard" onClick={() => setIsUserMenuOpen(false)}>
-                        <div className="flex items-center gap-2 px-4 py-3 text-gray-300 hover:bg-white/20 hover:text-white transition-colors text-sm">
-                          <LayoutDashboard className="w-4 h-4" />Dashboard
                         </div>
                       </Link>
                       <div className="border-t border-white/10" />
@@ -234,9 +229,9 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-transparent/98 backdrop-blur-md border-b border-white/10"
+            className="lg:hidden bg-black/95 backdrop-blur-md border-b border-white/10 max-h-[min(85vh,640px)] overflow-y-auto overscroll-contain"
           >
-            <div className="px-4 py-4 space-y-1">
+            <div className="px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-1">
               {navItems.map(item => (
                 <Link key={item.label} to={item.href}>
                   <button
@@ -252,8 +247,8 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="pt-1">
-                <p className="px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">System</p>
-                {systemItems.map(item => (
+                <p className="px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Product</p>
+                {productItems.map(item => (
                   <Link key={item.label} to={item.href}>
                     <button
                       onClick={() => setIsMobileMenuOpen(false)}
@@ -271,14 +266,6 @@ export default function Navbar() {
               <div className="border-t border-white/10 pt-2 mt-2 space-y-1">
                 {user ? (
                   <>
-                    <Link to="/dashboard">
-                      <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="w-full text-left px-3 py-2.5 rounded-xl text-cyan-400 hover:bg-cyan-500/10 transition-all text-sm font-medium"
-                      >
-                        Dashboard
-                      </button>
-                    </Link>
                     <Link to="/profile">
                       <button
                         onClick={() => setIsMobileMenuOpen(false)}

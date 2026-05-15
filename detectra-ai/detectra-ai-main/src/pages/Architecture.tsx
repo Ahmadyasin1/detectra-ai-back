@@ -1,10 +1,10 @@
-import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import {
   Layers, Cpu, Eye, Brain, Database, LayoutDashboard,
   Shield, Activity, Radio, Network,
   ChevronRight,
 } from 'lucide-react';
+import PageHero from '../components/PageHero';
 
 // ─── Layer definitions ────────────────────────────────────────────────────────
 
@@ -106,32 +106,15 @@ const AGENTS = [
 ];
 
 export default function Architecture() {
-  const headerRef = useRef(null);
-  const headerIn  = useInView(headerRef, { once: true, margin: '-80px' });
-
   return (
-    <div className="pt-20 min-h-screen bg-transparent">
-
-      {/* ── Header ── */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-gray-900 to-gray-950 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-dark opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,_var(--tw-gradient-stops))] from-cyan-500/8 via-transparent to-transparent" />
-
-        <div ref={headerRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={headerIn ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.55 }}>
-            <span className="badge-cyan mb-5 inline-flex gap-1.5">
-              <Network className="w-3.5 h-3.5" />
-              Production Architecture · 6-Layer Design
-            </span>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5">
-              System <span className="text-gradient-cyan">Architecture</span>
-            </h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              A 6-layer production architecture with clear boundaries between ingestion, processing, intelligence, reasoning, storage, and presentation — all communicating via async message queues.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Production Architecture · 6-Layer Design"
+        badgeIcon={Network}
+        title="System"
+        titleAccent="Architecture"
+        description="A 6-layer production architecture with clear boundaries between ingestion, processing, intelligence, reasoning, storage, and presentation — all communicating via async message queues."
+      />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
 

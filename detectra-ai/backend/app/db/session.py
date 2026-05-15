@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
+
 def _build_engine():
     url = settings.DATABASE_URL
     kwargs: dict = {"pool_pre_ping": True}

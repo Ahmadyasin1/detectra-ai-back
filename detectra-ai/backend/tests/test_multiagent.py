@@ -9,15 +9,8 @@ All tests run on CPU with mocked/stub models.
 """
 from __future__ import annotations
 
-import math
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import numpy as np
 import pytest
-
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -414,8 +407,8 @@ class TestFullPipelineSimulation:
         ReasoningAgent → verify outputs.
         """
         from app.services.agents.base_agent import EventBus
-        from app.services.pipeline.preprocessor import VideoMetadata
         from app.services.agents.reasoning_agent import ReasoningAgent
+        from app.services.pipeline.preprocessor import VideoMetadata
 
         # Pre-populate bus as if StreamAgent ran
         bus = EventBus(video_path="/fake/video.mp4", config={
@@ -465,8 +458,8 @@ class TestFullPipelineSimulation:
     def test_surveillance_scene_with_gunshot(self):
         """Critical scenario: gunshot audio + persons = CRITICAL anomaly."""
         from app.services.agents.base_agent import EventBus
-        from app.services.pipeline.preprocessor import VideoMetadata
         from app.services.agents.reasoning_agent import ReasoningAgent
+        from app.services.pipeline.preprocessor import VideoMetadata
 
         bus = EventBus(video_path="/fake/video.mp4", config={})
         bus.frames = _make_frames(5)
@@ -493,8 +486,8 @@ class TestFullPipelineSimulation:
     def test_empty_video_no_crash(self):
         """Pipeline must not crash on completely empty video."""
         from app.services.agents.base_agent import EventBus
-        from app.services.pipeline.preprocessor import VideoMetadata
         from app.services.agents.reasoning_agent import ReasoningAgent
+        from app.services.pipeline.preprocessor import VideoMetadata
 
         bus = EventBus(video_path="/fake/empty.mp4", config={})
         bus.frames = []
@@ -513,8 +506,8 @@ class TestFullPipelineSimulation:
     def test_crowd_scene_detection(self):
         """8 persons in frame → crowd_gathering or crowd_surge scene."""
         from app.services.agents.base_agent import EventBus
-        from app.services.pipeline.preprocessor import VideoMetadata
         from app.services.agents.reasoning_agent import ReasoningAgent
+        from app.services.pipeline.preprocessor import VideoMetadata
 
         crowd_objects = [{
             "timestamp_start_s": float(i), "timestamp_end_s": float(i+1),

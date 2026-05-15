@@ -1,26 +1,40 @@
-# ─── Detectra AI v4 — Standalone API Server Requirements ─────────────────────
+# ─── Detectra AI v5 — Standalone API Server Requirements ─────────────────────
+#
+# Tier 1 (required) — runs the baseline analyzer.
+# Tier 2 (optional, recommended) — unlocks the v5 accuracy engine
+# (faster-whisper + Silero VAD + CLIP visual logos + agentic reasoning).
+# Every Tier 2 dep degrades gracefully when missing.
 
-# Web framework
+# ── Tier 1: web framework ─────────────────────────────────────────────────────
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
+websockets>=12.0
+wsproto>=1.2.0
 python-multipart==0.0.17
 aiofiles==24.1.0
 
-# Computer vision + ML
+# ── Tier 1: computer vision + ML ──────────────────────────────────────────────
 ultralytics>=8.3.40        # YOLOv8s-seg + YOLOv8n-pose + ByteTrack
 opencv-python-headless>=4.10.0.84
-torch>=2.4.1               # CPU — for fusion transformer
-torchvision>=0.19.1
+# torch/torchvision installed in Dockerfile.api (CPU wheels)
 
-# Audio
-openai-whisper>=20240930
+# ── Tier 1: audio ─────────────────────────────────────────────────────────────
+openai-whisper>=20240930   # Fallback when faster-whisper is unavailable
 librosa>=0.10.2
 soundfile>=0.12.1
 noisereduce>=3.0.3
 
-# Utilities
+# ── Tier 1: misc ──────────────────────────────────────────────────────────────
 numpy>=1.26.4
 pillow>=11.0.0
-easyocr>=1.7.2
+easyocr>=1.7.2             # text-based logo recognition
 python-dotenv>=1.0.1
 PyJWT>=2.8.0
+
+# ── Tier 2: v5 accuracy engine (highly recommended) ───────────────────────────
+faster-whisper>=1.0.3      # 4-8× faster + more accurate Whisper, with Silero VAD baked-in
+ctranslate2>=4.4.0         # backend used by faster-whisper
+
+# ── Tier 2: optional CLIP visual logo recognition (heavy) ─────────────────────
+# Uncomment if you want to detect logos without readable text (e.g. swooshes).
+# open_clip_torch>=2.24.0

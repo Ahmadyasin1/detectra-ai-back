@@ -1,6 +1,6 @@
 # Detecra AI - Intelligent Detection Systems
 
-A cutting-edge AI detection platform powered by Nexariza AI, guided by Dr. Usman Aamer, Director of FOIT at University of Central Punjab.
+A cutting-edge AI detection platform powered by Nexariza AI. Supervision is phase-based: Phases 1-2 by Dr. Usman Aamer and Phases 3-4 by Dr. Yasin Nasir at University of Central Punjab.
 
 ## 🚀 Features
 
@@ -269,7 +269,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Ahmad Yasin** - Founder & CEO, Nexariza AI
 - **Eman Sarfraz** - Chief Operating Officer, Nexariza AI
 - **Abdul Rehman** - AI/ML Engineer, Detecra AI
-- **Dr. Usman Aamer** - Supervisor & Director, FOIT, University of Central Punjab
+- **Dr. Usman Aamer** - Supervisor (Phases 1-2) & Director, FOIT, University of Central Punjab
+- **Dr. Yasin Nasir** - Supervisor (Phases 3-4), University of Central Punjab
 
 ## 📞 Contact
 
@@ -281,7 +282,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - University of Central Punjab for academic support
-- Dr. Usman Aamer for research supervision
+- Dr. Usman Aamer (Phases 1-2 supervision)
+- Dr. Yasin Nasir (Phases 3-4 supervision)
 - Nexariza AI team for technical excellence
 - Open source community for amazing tools and libraries
 

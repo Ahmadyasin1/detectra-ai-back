@@ -8,7 +8,10 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
-  html  { scroll-behavior: smooth; }
+  html  {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
   body  {
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -16,6 +19,9 @@
     text-rendering: optimizeLegibility;
     background-color: #000000;
     color: #ffffff;
+    overflow-x: hidden;
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Poppins', 'Inter', sans-serif;
@@ -159,6 +165,38 @@
   .status-dot-offline { @apply status-dot bg-red-400; }
   .status-dot-active  { @apply status-dot bg-cyan-400 animate-pulse; }
   .status-dot-pending { @apply status-dot bg-yellow-400; }
+
+  /* Layout — consistent page width & padding on all breakpoints */
+  .page-shell {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .page-shell-narrow {
+    @apply w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .section-y {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+
+  .elite-card {
+    @apply rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-md;
+  }
+  .elite-label {
+    @apply text-[10px] sm:text-xs font-semibold uppercase tracking-[0.22em] text-cyan-400;
+  }
+
+  /* Horizontal scroll containers (tables, tab bars) */
+  .scroll-x-touch {
+    @apply overflow-x-auto overscroll-x-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Minimum tap target on coarse pointers */
+  @media (pointer: coarse) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────────────────── */

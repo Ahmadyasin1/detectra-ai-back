@@ -23,7 +23,7 @@ export default function SignUp() {
   const navigate                                  = useNavigate();
   const location                                  = useLocation();
 
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/analyze';
 
   useEffect(() => {
     if (from && from !== '/signup') sessionStorage.setItem('oauth_redirect_path', from);
@@ -74,7 +74,7 @@ export default function SignUp() {
   return (
     <>
       <SEO title="Sign Up — Detectra AI" description="Create a Detectra AI account to access the full multimodal video analysis pipeline." />
-      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-transparent">
+      <motion.div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 py-10 sm:py-12 pt-24 pb-[max(2.5rem,env(safe-area-inset-bottom))] bg-transparent">
 
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(34,211,238,0.06)_0%,transparent_60%)] pointer-events-none" />
 
@@ -84,7 +84,7 @@ export default function SignUp() {
           transition={{ duration: 0.4 }}
           className="relative w-full max-w-md"
         >
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 p-8">
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 p-5 sm:p-8">
 
             {/* Header */}
             <div className="text-center mb-7">
@@ -96,7 +96,7 @@ export default function SignUp() {
             </div>
 
             {/* Social auth */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <button
                 type="button"
                 onClick={() => handleSocial('google')}
@@ -271,7 +271,7 @@ export default function SignUp() {
             Final Year Project · University of Central Punjab · BSAI 2025–2026
           </p>
         </motion.div>
-      </div>
+      </motion.div>
     </>
   );
 }

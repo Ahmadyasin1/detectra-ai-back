@@ -4,7 +4,7 @@ import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-transparent">
+    <div className="min-h-[calc(100vh-5rem)] pt-24 flex items-center justify-center px-4 bg-transparent relative">
 
       {/* Background glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(34,211,238,0.05),transparent_60%)] pointer-events-none" />

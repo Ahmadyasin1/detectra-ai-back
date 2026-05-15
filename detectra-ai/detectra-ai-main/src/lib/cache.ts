@@ -75,7 +75,7 @@ function getDB(): Promise<IDBPDatabase<DetectraDB>> {
         }
       },
     }).catch((error) => {
-      console.warn('Failed to open IndexedDB, offline caching disabled', error);
+      console.warn('Failed to open IndexedDB, offline caching disabled');
       dbPromise = null;
       throw error;
     });
@@ -88,41 +88,42 @@ export async function withCache<T>(
   key: string,
   fetchFn: () => Promise<T>,
   options: {
-    storeName: keyof DetectraDB;
+    storeName: 'analysisResults' | 'jobStatuses' | 'videoUploads' | 'settings';
     ttl?: number;
     bypassCache?: boolean;
-  } = {} as any
+  } = { storeName: 'analysisResults' as const }
 ): Promise<T> {
   if (!isOfflineCacheEnabled || options.bypassCache) {
     return fetchFn();
   }
 
   const storeName = options.storeName;
-  const ttl = options.ttl || CACHE_DURATION;
+  const ttl = (options.ttl || CACHE_DURATION) as number;
 
   try {
     const db = await getDB();
 
     // Try to get from cache first
-    const cached = await db.get(storeName as any, key);
+    const cached = await db.get(storeName, key);
 
     if (cached) {
       const now = Date.now();
-      const expiresAt = 'expiresAt' in cached ? cached.expiresAt : cached.cachedAt + ttl;
+      const cachedAt = (cached as { cachedAt: number }).cachedAt;
+      const expiresAt = (cached as { expiresAt?: number }).expiresAt || cachedAt + ttl;
 
       if (now < expiresAt) {
         // Cache hit and valid
         if ('result' in cached) {
-          return (cached as any).result as T;
+          return (cached as unknown as { result: T }).result;
         }
-        return cached as T;
+        return cached as unknown as T;
       }
 
       // Cache expired, delete it
-      await db.delete(storeName as any, key);
+      await db.delete(storeName, key);
     }
-  } catch (error) {
-    console.warn('Cache read failed, bypassing cache', error);
+  } catch {
+    console.warn('Cache read failed, bypassing cache');
   }
 
   // Fetch fresh data
@@ -133,14 +134,14 @@ export async function withCache<T>(
     const db = await getDB();
     const now = Date.now();
 
-    await db.put(storeName as any, {
-      ...(typeof result === 'object' ? result : { value: result }),
+    await db.put(storeName, {
+      ...(typeof result === 'object' && result !== null ? result : { value: result }),
       jobId: key,
       cachedAt: now,
       expiresAt: now + ttl,
-    } as any);
-  } catch (error) {
-    console.warn('Cache write failed', error);
+    } as DetectraDB[typeof storeName]);
+  } catch {
+    console.warn('Cache write failed');
   }
 
   return result;
@@ -157,8 +158,8 @@ export async function getCachedAnalysisResult(jobId: string): Promise<AnalysisRe
     if (cached && Date.now() < cached.expiresAt) {
       return cached.result;
     }
-  } catch (error) {
-    console.warn('Failed to read cached analysis result', error);
+  } catch {
+    console.warn('Failed to read cached analysis result');
   }
 
   return null;
@@ -175,8 +176,8 @@ export async function cacheAnalysisResult(jobId: string, result: AnalysisResult)
       cachedAt: Date.now(),
       expiresAt: Date.now() + CACHE_DURATION,
     });
-  } catch (error) {
-    console.warn('Failed to cache analysis result', error);
+  } catch {
+    console.warn('Failed to cache analysis result');
   }
 }
 
@@ -191,8 +192,8 @@ export async function getCachedJobStatus(jobId: string): Promise<JobStatus | nul
     if (cached && Date.now() - cached.cachedAt < 5 * 60 * 1000) {
       return cached.status;
     }
-  } catch (error) {
-    console.warn('Failed to read cached job status', error);
+  } catch {
+    console.warn('Failed to read cached job status');
   }
 
   return null;
@@ -208,12 +209,12 @@ export async function cacheJobStatus(jobId: string, status: JobStatus): Promise<
       status,
       cachedAt: Date.now(),
     });
-  } catch (error) {
-    console.warn('Failed to cache job status', error);
+  } catch {
+    console.warn('Failed to cache job status');
   }
 }
 
-// Video uploads cache (for offline viewing)
+// Video uploads cache
 export async function getCachedVideoUploads(userId: string): Promise<VideoUpload[]> {
   if (!isOfflineCacheEnabled) return [];
 
@@ -221,8 +222,8 @@ export async function getCachedVideoUploads(userId: string): Promise<VideoUpload
     const db = await getDB();
     const uploads = await db.getAllFromIndex('videoUploads', 'by-userId', userId);
     return uploads || [];
-  } catch (error) {
-    console.warn('Failed to read cached uploads', error);
+  } catch {
+    console.warn('Failed to read cached uploads');
     return [];
   }
 }
@@ -233,8 +234,8 @@ export async function cacheVideoUpload(upload: VideoUpload): Promise<void> {
   try {
     const db = await getDB();
     await db.put('videoUploads', upload);
-  } catch (error) {
-    console.warn('Failed to cache video upload', error);
+  } catch {
+    console.warn('Failed to cache video upload');
   }
 }
 
@@ -245,8 +246,8 @@ export async function clearAllCache(): Promise<void> {
     await db.clear('analysisResults');
     await db.clear('jobStatuses');
     await db.clear('videoUploads');
-  } catch (error) {
-    console.warn('Failed to clear cache', error);
+  } catch {
+    console.warn('Failed to clear cache');
   }
 }
 
@@ -258,7 +259,7 @@ export async function getCacheSize(): Promise<{ count: number; size: number }> {
     const count = results.length;
     const size = new Blob([JSON.stringify(results)]).size;
     return { count, size };
-  } catch (error) {
+  } catch {
     return { count: 0, size: 0 };
   }
 }

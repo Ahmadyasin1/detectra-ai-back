@@ -23,7 +23,7 @@ export default function FYPProject() {
     {
       icon: Award,
       title: 'Supervisor',
-      content: 'Dr. Usman Aamer, Director of FOIT, University of Central Punjab',
+      content: 'Phases 1-2: Dr. Usman Aamer (Director FOIT, UCP) · Phases 3-4: Dr. Yasin Nasir (UCP)',
       color: 'from-violet-600 to-cyan-500',
     },
     {

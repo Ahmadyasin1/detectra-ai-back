@@ -6,14 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
+# Import all models to ensure they are registered with SQLAlchemy metadata
+import app.db.models  # noqa: F401
 from app.api.v1.router import api_router
 from app.config import settings
 from app.core.logging import configure_logging, logger
 from app.db.base import Base
 from app.db.session import engine
-
-# Import all models to ensure they are registered with SQLAlchemy metadata
-import app.db.models  # noqa: F401
 
 
 @asynccontextmanager
@@ -25,7 +24,7 @@ async def lifespan(app: FastAPI):
     for d in [settings.UPLOAD_DIR, settings.MODELS_DIR, settings.TEMP_DIR]:
         Path(d).mkdir(parents=True, exist_ok=True)
 
-    # Create all DB tables (in development, skipped during tests)
+    # Create all DB tables (in development only, production uses migrations)
     if settings.ENVIRONMENT == "development" and "pytest" not in str(Path(__file__).parent):
         import os
         if not os.getenv("PYTEST_CURRENT_TEST"):

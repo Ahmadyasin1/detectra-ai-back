@@ -1,33 +1,53 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Detectra AI v4.0 — Standalone API Server Dockerfile
+# Detectra AI — ML API (api_server.py + analyze_videos.py)
+# Build:  docker build -f Dockerfile.api -t detectra-api .
+# Run:    docker run -p 8000:8000 --env-file .env -v detectra_uploads:/app/uploads detectra-api
 # ═══════════════════════════════════════════════════════════════════════════════
 FROM python:3.12-slim
 
-# System dependencies (ffmpeg for audio, libgl for cv2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg libgl1 libglib2.0-0 libsm6 libxext6 libxrender-dev \
-    curl wget git && rm -rf /var/lib/apt/lists/*
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies
 COPY requirements.api.txt ./
+# CPU-only PyTorch (avoids ~2GB CUDA wheels in default pip index)
+RUN pip install --no-cache-dir \
+    torch torchvision \
+    --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r requirements.api.txt
 
-# Copy application files
-COPY analyze_videos.py api_server.py dashboard.html ./
+COPY api_server.py analyze_videos.py detectra_accuracy.py dashboard.html ./
+# Entrypoint created inside the image (avoids Windows CRLF breaking /bin/sh)
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    'mkdir -p "${UPLOAD_DIR:-/app/uploads}" /app/analysis_output' \
+    'if [ "${WARMUP_MODELS:-0}" = "1" ]; then' \
+    '  python -c "from ultralytics import YOLO; [YOLO(n) for n in (\"yolov8s-seg.pt\", \"yolov8n-pose.pt\")]" || true' \
+    'fi' \
+    'exec "$@"' \
+    > /entrypoint.sh && chmod +x /entrypoint.sh \
+    && mkdir -p uploads analysis_output
 
-# Copy YOLO model weights (must exist in build context; docker-compose also mounts them as volumes)
-COPY yolov8s-seg.pt yolov8n-pose.pt ./
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    API_HOST=0.0.0.0 \
+    API_PORT=8000 \
+    UPLOAD_DIR=/app/uploads
 
-# Create directories
-RUN mkdir -p uploads analysis_output
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=15s --start-period=90s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health || exit 1
 
 EXPOSE 8000
-ENV PYTHONUNBUFFERED=1
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "-u", "api_server.py"]

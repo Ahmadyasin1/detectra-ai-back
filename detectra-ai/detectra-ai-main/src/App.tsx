@@ -1,7 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import Project from './pages/Project';
 import FYPProject from './pages/FYPProject';
 import Timeline from './pages/Timeline';
 import ResearchLiterature from './pages/ResearchLiterature';
@@ -22,8 +21,19 @@ import JobResults from './pages/JobResults';
 import NotFound from './pages/NotFound';
 import { useAuth } from './contexts/AuthContext';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+/**
+ * Generic protected route — redirects to /signin when no user.
+ * `allowGuest` lets routes opt-in to letting unauthenticated users in when
+ * Supabase isn't configured (so the analyzer still works in dev/demo mode).
+ */
+function ProtectedRoute({
+  children,
+  allowGuest = false,
+}: {
+  children: React.ReactNode;
+  allowGuest?: boolean;
+}) {
+  const { user, loading, isGuest } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -38,11 +48,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    // Save the current location so we can redirect back after sign-in
+    if (allowGuest && isGuest) return <>{children}</>;
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
   return <>{children}</>;
+}
+
+/** Old bookmarks / shared links */
+function LegacyDashboardAnalyzeRedirect() {
+  const { jobId } = useParams();
+  return <Navigate to={`/analyze/progress/${jobId}`} replace />;
+}
+
+function LegacyDashboardResultsRedirect() {
+  const { jobId } = useParams();
+  return <Navigate to={`/analyze/results/${jobId}`} replace />;
 }
 
 function App() {
@@ -51,18 +72,11 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="project" element={<Project />} />
+          <Route path="project" element={<Navigate to="/fyp-project" replace />} />
           <Route path="fyp-project" element={<FYPProject />} />
           <Route path="timeline" element={<Timeline />} />
           <Route path="research" element={<ResearchLiterature />} />
-          <Route
-            path="demo"
-            element={
-              <ProtectedRoute>
-                <DetectionDemo />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="demo" element={<DetectionDemo />} />
           <Route path="architecture" element={<Architecture />} />
           <Route path="pipeline" element={<Pipeline />} />
           <Route path="capabilities" element={<Capabilities />} />
@@ -81,29 +95,32 @@ function App() {
             }
           />
           <Route
-            path="dashboard"
+            path="analyze"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowGuest>
                 <Dashboard />
               </ProtectedRoute>
             }
           />
           <Route
-            path="dashboard/analyze/:jobId"
+            path="analyze/progress/:jobId"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowGuest>
                 <AnalyzeJob />
               </ProtectedRoute>
             }
           />
           <Route
-            path="dashboard/results/:jobId"
+            path="analyze/results/:jobId"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowGuest>
                 <JobResults />
               </ProtectedRoute>
             }
           />
+          <Route path="dashboard" element={<Navigate to="/analyze" replace />} />
+          <Route path="dashboard/analyze/:jobId" element={<LegacyDashboardAnalyzeRedirect />} />
+          <Route path="dashboard/results/:jobId" element={<LegacyDashboardResultsRedirect />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

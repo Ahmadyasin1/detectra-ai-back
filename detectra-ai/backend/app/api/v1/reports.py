@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ForbiddenException, NotFoundException

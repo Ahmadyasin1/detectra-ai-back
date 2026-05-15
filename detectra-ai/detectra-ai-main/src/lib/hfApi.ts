@@ -2,6 +2,8 @@
 // Model: Mistral-7B-Instruct-v0.2 (best free open-source instruction model)
 // Add VITE_HF_TOKEN to .env for higher rate limits and priority access
 
+import { distinctPersonCount, type AnalysisResult } from './detectraApi';
+
 const HF_API  = 'https://api-inference.huggingface.co/models';
 const HF_TOKEN = import.meta.env.VITE_HF_TOKEN ?? '';
 const MODEL_ID = 'mistralai/Mistral-7B-Instruct-v0.2';
@@ -72,7 +74,7 @@ export function buildVideoContext(result: Record<string, unknown>): string {
 
   const transcript = result.full_transcript as string | undefined;
   const survCount = ((result.surveillance_events as Row[]) || []).length;
-  const trackCount = ((result.unique_track_ids as Row[]) || []).length;
+  const trackCount = distinctPersonCount(result as unknown as AnalysisResult);
 
   return `VIDEO INTELLIGENCE REPORT
 ==========================
@@ -91,7 +93,7 @@ SURVEILLANCE EVENTS (${survCount} total)
 ${events || '  None detected'}
 
 PERSONS & TRACKING
-Unique persons tracked: ${trackCount}
+Distinct individuals (estimated): ${trackCount}
 Max concurrent in frame: ${(result.max_concurrent_persons as number) || 0}
 Peak activity at: ${Math.floor(((result.peak_activity_ts as number) || 0) / 60)}:${String(Math.floor(((result.peak_activity_ts as number) || 0) % 60)).padStart(2, '0')}
 Total object detections: ${(result.total_object_count as number) || 0}

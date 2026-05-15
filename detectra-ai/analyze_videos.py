@@ -68,21 +68,79 @@ OUTPUT_DIR  = SCRIPT_DIR / "analysis_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-YOLO_SEG_MODEL  = "yolov8s-seg.pt"   # small: 44.9 mAP (was nano: 36.8)
-YOLO_POSE_MODEL = "yolov8n-pose.pt"  # 17-keypoint skeleton
-WHISPER_MODEL   = "small"            # 244M params, much better WER than base
-ANALYSIS_FPS    = 3                  # frames/sec to analyze
-YOLO_CONF       = 0.28               # detection threshold (lower = more recall)
-YOLO_IOU        = 0.45
-MASK_ALPHA      = 0.38
-FUSION_WINDOW   = 2.0                # seconds per fusion bin
-USE_DENOISE     = True               # noisereduce before Whisper
-DRAW_POSE       = True               # draw skeleton on output video
-MIN_TRACK_AGE   = 2                  # frames before trusting a track
-LOITER_SECONDS  = 12.0               # dwell time to classify as loitering (longer = fewer false positives)
-LOITER_RADIUS   = 0.10               # normalized radius for loitering zone
-ACTION_CONFIRM  = 3                  # frames action must persist before committing
-USE_CLAHE       = True               # CLAHE contrast enhancement before detection
+# All knobs below can be overridden via environment variables for production tuning.
+
+def _env(name: str, default):
+    """Read env-var with type coercion based on the default's type."""
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        if isinstance(default, bool):
+            return raw.strip().lower() in {"1", "true", "yes", "on"}
+        if isinstance(default, int):
+            return int(raw)
+        if isinstance(default, float):
+            return float(raw)
+        return raw
+    except Exception:
+        return default
+
+
+YOLO_SEG_MODEL   = _env("DETECTRA_YOLO_SEG_MODEL",  "yolov8s-seg.pt")   # default s (CPU-friendly); set DETECTRA_YOLO_SEG_MODEL=yolov8m-seg.pt for higher accuracy
+YOLO_POSE_MODEL  = _env("DETECTRA_YOLO_POSE_MODEL", "yolov8n-pose.pt")  # 17-keypoint skeleton
+WHISPER_MODEL    = _env("DETECTRA_WHISPER_MODEL",   "medium")           # medium → much better multilingual WER than small
+ANALYSIS_FPS     = _env("DETECTRA_ANALYSIS_FPS",     3)                 # frames/sec to analyze
+YOLO_CONF        = _env("DETECTRA_YOLO_CONF",        0.25)              # slightly lower → higher recall in crowded scenes
+YOLO_IOU         = _env("DETECTRA_YOLO_IOU",         0.45)
+USE_TTA          = _env("DETECTRA_USE_TTA",          False)             # Test-Time Augmentation (flip + scales) — slower but +mAP
+MASK_ALPHA       = 0.38
+FUSION_WINDOW    = _env("DETECTRA_FUSION_WINDOW",    2.0)               # seconds per fusion bin
+USE_DENOISE      = _env("DETECTRA_USE_DENOISE",      True)
+DRAW_POSE        = _env("DETECTRA_DRAW_POSE",        True)
+MIN_TRACK_AGE    = _env("DETECTRA_MIN_TRACK_AGE",    2)
+LOITER_SECONDS   = _env("DETECTRA_LOITER_SECONDS",   12.0)
+LOITER_RADIUS    = _env("DETECTRA_LOITER_RADIUS",    0.10)
+ACTION_CONFIRM   = _env("DETECTRA_ACTION_CONFIRM",   3)
+USE_CLAHE        = _env("DETECTRA_USE_CLAHE",        True)
+PERSON_MIN_CONF  = _env("DETECTRA_PERSON_MIN_CONF",  0.30)
+OBJECT_MIN_CONF  = _env("DETECTRA_OBJECT_MIN_CONF",  0.32)
+
+# ─── Accuracy engine flags (toggleable via env) ──────────────────────────────
+USE_FASTER_WHISPER = _env("DETECTRA_USE_FASTER_WHISPER", True)
+USE_IDENTITY_REID  = _env("DETECTRA_USE_IDENTITY_REID",  True)
+USE_CLIP_LOGOS     = _env("DETECTRA_USE_CLIP_LOGOS",     True)    # CLIP visual logo recognition (auto-falls back if open_clip missing)
+USE_REASONING      = _env("DETECTRA_USE_REASONING",      True)
+USE_CADENCE        = _env("DETECTRA_USE_CADENCE",        True)
+WHISPER_BEAM_SIZE  = _env("DETECTRA_WHISPER_BEAM",       5)
+CLIP_LOGO_THRESH   = float(os.getenv("DETECTRA_CLIP_LOGO_THRESH", "0.30"))
+CLIP_LOGO_REGIONS  = os.getenv("DETECTRA_CLIP_LOGO_REGIONS", "multi")  # "single"|"multi"
+OCR_LANGUAGES      = [l.strip() for l in os.getenv("DETECTRA_OCR_LANGS",
+                       "en,es,fr,de,it,pt,nl,id,vi").split(",") if l.strip()]
+
+# ─── Accuracy engine — graceful import ────────────────────────────────────────
+try:
+    from detectra_accuracy import (
+        transcribe_audio_enhanced,
+        faster_whisper_available,
+        IdentityTracker,
+        ClipLogoMatcher,
+        ReasoningAgent,
+        AnkleCadenceClassifier,
+        DEFAULT_LOGO_BRANDS,
+    )
+    _ACCURACY_ENGINE = True
+except Exception as _acc_exc:
+    print(f"  [WARN] detectra_accuracy unavailable ({_acc_exc}); "
+          f"falling back to baseline pipeline")
+    transcribe_audio_enhanced = None  # type: ignore[assignment]
+    faster_whisper_available = lambda: False  # type: ignore[assignment]
+    IdentityTracker = None  # type: ignore[assignment]
+    ClipLogoMatcher = None  # type: ignore[assignment]
+    ReasoningAgent = None  # type: ignore[assignment]
+    AnkleCadenceClassifier = None  # type: ignore[assignment]
+    DEFAULT_LOGO_BRANDS: list[str] = []  # type: ignore[no-redef]
+    _ACCURACY_ENGINE = False
 
 # ─── Dangerous / high-priority objects ───────────────────────────────────────
 WEAPON_CLASSES   = {"baseball bat", "knife", "scissors"}     # COCO objects → weapon alert
@@ -321,6 +379,8 @@ class VideoAnalysis:
     fusion_insights: list[FusionInsight] = field(default_factory=list)
     surveillance_events: list[SurveillanceEvent] = field(default_factory=list)
     unique_track_ids: set[int] = field(default_factory=set)
+    # Co-occurrence graph estimate (collapses ByteTrack ID-switch fragments)
+    distinct_individuals: int = 0
 
     total_object_count: int = 0
     class_frequencies: dict[str, int] = field(default_factory=dict)
@@ -337,9 +397,131 @@ class VideoAnalysis:
     labeled_video_path: Path | None = None
     report_path: Path | None = None
 
+    # ── Accuracy-engine v5 augmentations ────────────────────────────────────
+    identities: list[dict] = field(default_factory=list)        # appearance-ReID identities
+    reasoning: dict = field(default_factory=dict)               # ReasoningAgent synthesis
+    speech_engine: str = ""                                     # "faster-whisper-medium" etc.
+    accuracy_engine_version: str = ""                           # e.g. "5.0"
+
     @property
     def video_name(self) -> str:
         return self.video_path.stem
+
+
+def _build_reasoning_payload(analysis: "VideoAnalysis") -> dict[str, Any]:
+    """Marshall a VideoAnalysis into the structured payload expected by the
+    ReasoningAgent (plain dicts, no analyzer-internal types)."""
+    def _frame_to_dict(fr: "FrameResult") -> dict[str, Any]:
+        return {
+            "frame_idx": fr.frame_idx,
+            "timestamp_s": fr.timestamp_s,
+            "person_count": fr.person_count,
+            "dominant_action": fr.dominant_action,
+            "flow_magnitude": fr.flow_magnitude,
+            "surveillance_flags": list(fr.surveillance_flags),
+            "unique_track_ids": list(fr.unique_track_ids),
+            "detections": [
+                {
+                    "class_name": d.class_name,
+                    "confidence": d.confidence,
+                    "action": d.action,
+                    "track_id": d.track_id,
+                }
+                for d in fr.detections
+            ],
+        }
+
+    return {
+        "duration_s": analysis.duration_s,
+        "fps": analysis.fps,
+        "width": analysis.width,
+        "height": analysis.height,
+        "frame_results": [_frame_to_dict(fr) for fr in analysis.frame_results],
+        "speech_segments": [
+            {
+                "start_s": s.start_s, "end_s": s.end_s, "text": s.text,
+                "language": s.language, "language_name": s.language_name,
+                "confidence": s.confidence, "is_noise": s.is_noise,
+            }
+            for s in analysis.speech_segments
+        ],
+        "audio_events": [
+            {
+                "timestamp_s": e.timestamp_s, "event_type": e.event_type,
+                "details": e.details, "confidence": e.confidence,
+            }
+            for e in analysis.audio_events
+        ],
+        "logo_detections": [
+            {
+                "timestamp_s": lg.timestamp_s, "brand": lg.brand,
+                "text_found": lg.text_found, "confidence": lg.confidence,
+                "source": lg.source, "bbox": lg.bbox,
+            }
+            for lg in analysis.logo_detections
+        ],
+        "fusion_insights": [
+            {
+                "window_start_s": fi.window_start_s,
+                "window_end_s": fi.window_end_s,
+                "scene_label": fi.scene_label,
+                "anomaly_score": fi.anomaly_score,
+                "visual_audio_alignment": fi.visual_audio_alignment,
+                "confidence": fi.confidence,
+                "alert": fi.alert,
+                "severity": fi.severity,
+                "contributing_factors": list(fi.contributing_factors),
+                "description": fi.description,
+            }
+            for fi in analysis.fusion_insights
+        ],
+        "surveillance_events": [
+            {
+                "timestamp_s": sv.timestamp_s,
+                "event_type": sv.event_type,
+                "severity": sv.severity,
+                "description": sv.description,
+                "track_ids": list(sv.track_ids),
+                "confidence": sv.confidence,
+            }
+            for sv in analysis.surveillance_events
+        ],
+        "distinct_individuals": analysis.distinct_individuals or len(analysis.identities),
+        "identities": list(analysis.identities),
+        "unique_track_ids": sorted(analysis.unique_track_ids),
+    }
+
+
+def estimate_distinct_individuals_from_frames(frame_results: list[FrameResult]) -> int:
+    """
+    Minimum number of physical individuals consistent with per-frame track IDs.
+
+    ByteTrack often assigns a new ID after occlusion or re-entry. Those fragment
+    IDs never co-occur in the same frame, so they can represent one person.
+    Any two IDs that **do** appear in the same frame must be different people;
+    this is approximated with greedy graph coloring.
+    """
+    tids: set[int] = set()
+    for fr in frame_results:
+        tids.update(fr.unique_track_ids)
+    if not tids:
+        return 0
+    neighbors: dict[int, set[int]] = {t: set() for t in tids}
+    for fr in frame_results:
+        ids = sorted(fr.unique_track_ids)
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                a, b = ids[i], ids[j]
+                neighbors[a].add(b)
+                neighbors[b].add(a)
+    color: dict[int, int] = {}
+    for t in sorted(tids):
+        used = {color[n] for n in neighbors[t] if n in color}
+        c = 0
+        while c in used:
+            c += 1
+        color[t] = c
+    return max(color.values()) + 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -788,58 +970,293 @@ class SurveillanceDetector:
 # ══════════════════════════════════════════════════════════════════════════════
 
 BRANDS: dict[str, list[str]] = {
-    "Apple":         ["apple","iphone","ipad","macbook","airpods","ios","macos"],
-    "Google":        ["google","youtube","android","gmail","chrome","goog"],
-    "Microsoft":     ["microsoft","windows","xbox","office","azure","msft"],
-    "Samsung":       ["samsung","galaxy"],
+    # Tech
+    "Apple":         ["apple","iphone","ipad","macbook","airpods","ios","macos","appstore"],
+    "Google":        ["google","youtube","android","gmail","chrome","goog","pixel","alphabet"],
+    "Microsoft":     ["microsoft","windows","xbox","office","azure","msft","outlook","onedrive"],
+    "Samsung":       ["samsung","galaxy","note"],
+    "Sony":          ["sony","playstation","bravia","walkman"],
+    "Intel":         ["intel","inside"],
+    "AMD":           ["amd","radeon","ryzen"],
+    "Nvidia":        ["nvidia","geforce","rtx","gtx"],
+    "IBM":           ["ibm"],
+    "Huawei":        ["huawei"],
+    "Xiaomi":        ["xiaomi","mi","redmi"],
+    "OnePlus":       ["oneplus"],
+    "Lenovo":        ["lenovo","thinkpad"],
+    "Dell":          ["dell","alienware"],
+    "HP":            ["hewlett","packard","hp"],
+    "Asus":          ["asus","rog"],
+    "Acer":          ["acer","predator"],
+    # Social & internet
     "Meta/Facebook": ["facebook","meta","instagram","whatsapp","fb"],
-    "Twitter/X":     ["twitter","tweet"],
+    "Twitter/X":     ["twitter","tweet","x.com"],
+    "TikTok":        ["tiktok","douyin"],
+    "Snapchat":      ["snapchat","snap"],
+    "LinkedIn":      ["linkedin"],
+    "Pinterest":     ["pinterest"],
+    "Reddit":        ["reddit"],
+    "Discord":       ["discord"],
+    "Telegram":      ["telegram"],
+    "Zoom":          ["zoom"],
+    "Slack":         ["slack"],
+    # Streaming
     "Netflix":       ["netflix"],
-    "Amazon":        ["amazon","prime","aws"],
-    "Uber":          ["uber"],
-    "Nike":          ["nike","just do it"],
-    "Adidas":        ["adidas"],
-    "Puma":          ["puma"],
-    "Coca-Cola":     ["coca","cola","coke","cocacola"],
-    "Pepsi":         ["pepsi"],
-    "McDonald's":    ["mcdonald","mcdonalds","mcd","bigmac"],
-    "KFC":           ["kfc","kentucky"],
-    "Starbucks":     ["starbucks"],
-    "Red Bull":      ["redbull","red bull"],
-    "BMW":           ["bmw"],
-    "Toyota":        ["toyota"],
-    "Mercedes":      ["mercedes","benz","mercedes-benz"],
-    "Tesla":         ["tesla"],
+    "Disney+":       ["disney","disney+"],
+    "HBO":           ["hbo","max"],
+    "Hulu":          ["hulu"],
+    "Prime Video":   ["prime","amazon prime"],
+    "Spotify":       ["spotify"],
+    "Twitch":        ["twitch"],
+    # Retail & e-commerce
+    "Amazon":        ["amazon","aws"],
+    "eBay":          ["ebay"],
+    "Alibaba":       ["alibaba"],
+    "AliExpress":    ["aliexpress"],
     "Walmart":       ["walmart"],
     "Target":        ["target"],
+    "Costco":        ["costco"],
+    "Tesco":         ["tesco"],
+    "Carrefour":     ["carrefour"],
+    "Aldi":          ["aldi"],
+    "Lidl":          ["lidl"],
     "IKEA":          ["ikea"],
-    "Shell":         ["shell"],
-    "Visa":          ["visa"],
-    "Mastercard":    ["mastercard"],
-    "PayPal":        ["paypal"],
-    "FedEx":         ["fedex"],
-    "DHL":           ["dhl"],
-    "UPS":           ["ups"],
+    "Sephora":       ["sephora"],
+    "Best Buy":      ["best buy","bestbuy"],
+    "Home Depot":    ["home depot","homedepot"],
+    # Fashion
+    "Nike":          ["nike","just do it","airjordan","jordan"],
+    "Adidas":        ["adidas","three stripes"],
+    "Puma":          ["puma"],
+    "Reebok":        ["reebok"],
+    "Under Armour":  ["under armour","underarmour","ua"],
+    "New Balance":   ["new balance","newbalance"],
+    "Converse":      ["converse"],
+    "Vans":          ["vans"],
+    "Asics":         ["asics"],
+    "Lacoste":       ["lacoste"],
+    "Polo Ralph Lauren": ["polo","ralph lauren"],
+    "Tommy Hilfiger":["tommy hilfiger","tommy"],
+    "Calvin Klein":  ["calvin klein","ck"],
+    "Gucci":         ["gucci"],
+    "Louis Vuitton": ["louis vuitton","lv"],
+    "Chanel":        ["chanel"],
+    "Prada":         ["prada"],
+    "Versace":       ["versace"],
+    "Hugo Boss":     ["hugo boss","boss"],
+    "Burberry":      ["burberry"],
+    "Zara":          ["zara"],
+    "H&M":           ["h&m","hm"],
+    "Uniqlo":        ["uniqlo"],
+    "Levi's":        ["levis","levi's","levi"],
+    # Beverages
+    "Coca-Cola":     ["coca","cola","coke","cocacola","coca-cola"],
+    "Pepsi":         ["pepsi","pepsico"],
+    "Sprite":        ["sprite"],
+    "Fanta":         ["fanta"],
+    "Mountain Dew":  ["mountain dew","mtn dew"],
+    "Dr Pepper":     ["dr pepper","drpepper"],
+    "Red Bull":      ["redbull","red bull"],
+    "Monster Energy":["monster"],
+    "Gatorade":      ["gatorade"],
+    "Lipton":        ["lipton"],
+    "Nescafe":       ["nescafe","nescafé"],
+    "Heineken":      ["heineken"],
+    "Corona":        ["corona","corona extra"],
+    "Budweiser":     ["budweiser","bud light"],
+    "Carlsberg":     ["carlsberg"],
+    "Stella Artois": ["stella artois","stella"],
+    "Guinness":      ["guinness"],
+    # Food / QSR
+    "McDonald's":    ["mcdonald","mcdonalds","mcd","bigmac","mcdo"],
+    "KFC":           ["kfc","kentucky"],
+    "Burger King":   ["burger king","bk"],
+    "Starbucks":     ["starbucks"],
     "Subway":        ["subway"],
     "Domino's":      ["dominos","domino's"],
+    "Pizza Hut":     ["pizza hut","pizzahut"],
+    "Taco Bell":     ["taco bell","tacobell"],
+    "Wendy's":       ["wendys","wendy's"],
+    "Chick-fil-A":   ["chick-fil-a","chickfila"],
+    "Dunkin'":       ["dunkin","dunkin'","dunkin donuts"],
+    "Tim Hortons":   ["tim hortons","timhortons"],
+    "Costa Coffee":  ["costa","costa coffee"],
+    "Nestle":        ["nestle","nestlé"],
+    "Kellogg's":     ["kelloggs","kellogg"],
+    "Cadbury":       ["cadbury"],
+    "Hershey's":     ["hersheys","hershey"],
+    "Lay's":         ["lays","lay's"],
+    "Doritos":       ["doritos"],
+    "Pringles":      ["pringles"],
+    "Oreo":          ["oreo"],
+    "Snickers":      ["snickers"],
+    "M&M's":         ["m&m","mms","m&ms"],
+    "Kit Kat":       ["kit kat","kitkat"],
+    # Automotive
+    "BMW":           ["bmw"],
+    "Mercedes-Benz": ["mercedes","benz","mercedes-benz"],
+    "Audi":          ["audi"],
+    "Toyota":        ["toyota"],
+    "Honda":         ["honda"],
+    "Ford":          ["ford"],
+    "Tesla":         ["tesla","model s","model 3","model x","model y"],
+    "Volkswagen":    ["volkswagen","vw"],
+    "Hyundai":       ["hyundai"],
+    "Kia":           ["kia"],
+    "Mazda":         ["mazda"],
+    "Subaru":        ["subaru"],
+    "Ferrari":       ["ferrari"],
+    "Lamborghini":   ["lamborghini","lambo"],
+    "Porsche":       ["porsche"],
+    "Bentley":       ["bentley"],
+    "Rolls-Royce":   ["rolls-royce","rolls royce"],
+    "Jaguar":        ["jaguar"],
+    "Land Rover":    ["land rover","range rover","landrover"],
+    "Volvo":         ["volvo"],
+    "Peugeot":       ["peugeot"],
+    "Renault":       ["renault"],
+    "Fiat":          ["fiat"],
+    "Jeep":          ["jeep"],
+    "Chevrolet":     ["chevrolet","chevy"],
+    "Dodge":         ["dodge"],
+    "Nissan":        ["nissan"],
+    "Mitsubishi":    ["mitsubishi"],
+    "Suzuki":        ["suzuki"],
+    # Finance
+    "Visa":          ["visa"],
+    "Mastercard":    ["mastercard","master card"],
+    "American Express": ["american express","amex"],
+    "PayPal":        ["paypal"],
+    "Venmo":         ["venmo"],
+    "Stripe":        ["stripe"],
+    "Square":        ["square","squareup"],
+    "Klarna":        ["klarna"],
+    "Afterpay":      ["afterpay"],
+    "Apple Pay":     ["apple pay","applepay"],
+    "Google Pay":    ["google pay","googlepay","gpay"],
+    "HSBC":          ["hsbc"],
+    "Citibank":      ["citi","citibank"],
+    "Chase":         ["chase","jpmorgan","jp morgan"],
+    "Bank of America": ["bank of america","bofa"],
+    "Wells Fargo":   ["wells fargo","wellsfargo"],
+    "Barclays":      ["barclays"],
+    "Santander":     ["santander"],
+    "BNP Paribas":   ["bnp paribas","bnp"],
+    "Deutsche Bank": ["deutsche bank","deutsche"],
+    # Audio / electronics
+    "LG":            ["lg"],
+    "Panasonic":     ["panasonic"],
+    "Toshiba":       ["toshiba"],
+    "Sharp":         ["sharp"],
+    "Canon":         ["canon"],
+    "Nikon":         ["nikon"],
+    "Fujifilm":      ["fujifilm","fuji"],
+    "GoPro":         ["gopro"],
+    "DJI":           ["dji"],
+    "Bose":          ["bose"],
+    "JBL":           ["jbl"],
+    "Beats":         ["beats","beats by dre"],
+    "Sennheiser":    ["sennheiser"],
+    "Bosch":         ["bosch"],
+    "Philips":       ["philips"],
+    "Dyson":         ["dyson"],
+    # Logistics & energy
+    "FedEx":         ["fedex"],
+    "UPS":           ["ups"],
+    "DHL":           ["dhl"],
+    "USPS":          ["usps","united states postal"],
+    "Royal Mail":    ["royal mail"],
+    "Maersk":        ["maersk"],
+    "Shell":         ["shell"],
+    "BP":            ["bp","british petroleum"],
+    "ExxonMobil":    ["exxon","mobil","exxonmobil"],
+    "Chevron":       ["chevron"],
+    "Total":         ["total","totalenergies"],
+    "Aramco":        ["aramco"],
+    "GE":            ["general electric","ge"],
+    "Siemens":       ["siemens"],
+    "Schneider":     ["schneider"],
+    # Broadcasters & sports
+    "FIFA":          ["fifa"],
+    "UEFA":          ["uefa"],
+    "NBA":           ["nba"],
+    "NFL":           ["nfl"],
+    "MLB":           ["mlb"],
+    "NHL":           ["nhl"],
+    "Premier League":["premier league","epl"],
+    "Champions League": ["champions league","uefa champions"],
+    "Formula 1":     ["formula 1","formula1","f1"],
+    "ESPN":          ["espn"],
+    "CNN":           ["cnn"],
+    "BBC":           ["bbc"],
+    "Fox News":      ["fox news","fox"],
+    "Al Jazeera":    ["al jazeera","aljazeera"],
+    "Bloomberg":     ["bloomberg"],
+    "Reuters":       ["reuters"],
+    "Sky Sports":    ["sky sports","sky"],
+    # Airlines & travel
+    "Emirates":      ["emirates","fly emirates"],
+    "Qatar Airways": ["qatar airways","qatar"],
+    "Etihad":        ["etihad"],
+    "Lufthansa":     ["lufthansa"],
+    "Delta":         ["delta air"],
+    "United":        ["united airlines","united air"],
+    "American Airlines": ["american airlines"],
+    "British Airways": ["british airways","ba"],
+    "Singapore Airlines": ["singapore airlines"],
+    "Booking.com":   ["booking.com","booking"],
+    "Airbnb":        ["airbnb"],
+    "Uber":          ["uber"],
+    "Lyft":          ["lyft"],
+    "Bolt":          ["bolt"],
+    "Careem":        ["careem"],
 }
 _BRAND_KW: dict[str, str] = {
     kw.lower(): brand for brand, kws in BRANDS.items() for kw in kws
 }
+# Sort keywords by length (descending) so that longer keywords (e.g. "red bull")
+# match before shorter ones (e.g. "red") to avoid wrong-brand collisions.
+_BRAND_KW_SORTED: list[tuple[str, str]] = sorted(
+    _BRAND_KW.items(), key=lambda kv: -len(kv[0]))
 
 
 class LogoDetector:
-    def __init__(self):
+    def __init__(self, languages: list[str] | None = None):
         self._ocr = None
         self._ready = False
+        self._languages = languages or OCR_LANGUAGES
+        self._active_languages: list[str] = []
 
     def _load(self):
         if not self._ready:
             try:
                 import easyocr
-                print("  [OCR] Loading EasyOCR...")
-                self._ocr = easyocr.Reader(["en"], gpu=False, verbose=False)
-                print("  [OCR] EasyOCR ready ✓")
+                # Try the full requested set first; if EasyOCR rejects the
+                # combination (it requires same-script langs) fall back to
+                # progressively smaller subsets, finally English-only.
+                tried: list[list[str]] = []
+                attempts = [
+                    list(self._languages),
+                    [l for l in self._languages
+                     if l in {"en","es","fr","de","it","pt","nl","id","vi"}],
+                    ["en"],
+                ]
+                last_exc: Exception | None = None
+                for langs in attempts:
+                    if not langs or langs in tried:
+                        continue
+                    tried.append(langs)
+                    try:
+                        print(f"  [OCR] Loading EasyOCR ({'+'.join(langs)})...")
+                        self._ocr = easyocr.Reader(langs, gpu=False, verbose=False)
+                        self._active_languages = langs
+                        print(f"  [OCR] EasyOCR ready ✓ ({'+'.join(langs)})")
+                        break
+                    except Exception as e:
+                        last_exc = e
+                        self._ocr = None
+                if self._ocr is None and last_exc is not None:
+                    print(f"  [OCR] EasyOCR unavailable: {last_exc}")
             except Exception as e:
                 print(f"  [OCR] EasyOCR unavailable: {e}")
             self._ready = True
@@ -858,25 +1275,28 @@ class LogoDetector:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 results = ocr.readtext(proc, detail=1, paragraph=False,
-                                       min_size=12, width_ths=0.8, height_ths=0.8)
-            seen: set[str] = set()
+                                       min_size=10, width_ths=0.8, height_ths=0.8)
+            seen: set[tuple[str, str]] = set()
             for bbox_pts, text, conf in results:
-                if conf < 0.38 or len(text.strip()) < 2:
+                clean = text.strip()
+                if conf < 0.40 or len(clean) < 2:
                     continue
-                tl = text.lower().strip()
-                if tl in seen:
-                    continue
-                seen.add(tl)
+                tl = clean.lower()
                 brand = self._match(tl)
-                if brand:
-                    pts = np.array(bbox_pts)
-                    logos.append(LogoDetection(
-                        timestamp_s=ts, brand=brand, text_found=text.strip(),
-                        confidence=float(conf),
-                        bbox={"x1": float(pts[:,0].min()/w), "y1": float(pts[:,1].min()/h),
-                              "x2": float(pts[:,0].max()/w), "y2": float(pts[:,1].max()/h)},
-                        source="ocr",
-                    ))
+                if not brand:
+                    continue
+                key = (brand, tl)
+                if key in seen:
+                    continue
+                seen.add(key)
+                pts = np.array(bbox_pts)
+                logos.append(LogoDetection(
+                    timestamp_s=ts, brand=brand, text_found=text.strip(),
+                    confidence=float(conf),
+                    bbox={"x1": float(pts[:,0].min()/w), "y1": float(pts[:,1].min()/h),
+                          "x2": float(pts[:,0].max()/w), "y2": float(pts[:,1].max()/h)},
+                    source="ocr",
+                ))
         except Exception:
             pass
         return logos
@@ -894,8 +1314,13 @@ class LogoDetector:
 
     @staticmethod
     def _match(text: str) -> str | None:
-        for kw, brand in _BRAND_KW.items():
-            if kw in text or text in kw:
+        """Longest-keyword-wins substring match against the brand catalog."""
+        if len(text) < 2:
+            return None
+        for kw, brand in _BRAND_KW_SORTED:
+            if len(kw) < 2:
+                continue
+            if kw in text:
                 return brand
         return None
 
@@ -903,6 +1328,65 @@ class LogoDetector:
 # ══════════════════════════════════════════════════════════════════════════════
 # Audio Classifier (MFCC + spectral features — no external model)
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _smooth_audio_event_sequence(events: list[AudioEvent]) -> list[AudioEvent]:
+    """Temporal denoiser for one-off audio label spikes."""
+    if len(events) < 3:
+        return events
+    out = list(events)
+    for i in range(1, len(events) - 1):
+        prev_t = events[i - 1].event_type
+        curr_t = events[i].event_type
+        next_t = events[i + 1].event_type
+        if curr_t != prev_t and prev_t == next_t:
+            out[i] = AudioEvent(
+                timestamp_s=events[i].timestamp_s,
+                event_type=prev_t,
+                details=f"Temporal smoothing ({curr_t}->{prev_t})",
+                confidence=max(events[i].confidence, 0.70),
+                rms_energy=events[i].rms_energy,
+                zcr=events[i].zcr,
+                spectral_centroid=events[i].spectral_centroid,
+            )
+    return out
+
+
+def align_audio_events_with_speech(
+    events: list[AudioEvent], speech_segments: list[SpeechSegment]
+) -> list[AudioEvent]:
+    """
+    Cross-modal refinement: if Whisper confirms speech in a time span,
+    avoid labeling that span as plain ambient/noise.
+    """
+    if not events or not speech_segments:
+        return events
+    speech_windows = [
+        (seg.start_s, seg.end_s)
+        for seg in speech_segments
+        if not seg.is_noise and seg.confidence >= 0.30
+    ]
+    if not speech_windows:
+        return events
+
+    refined: list[AudioEvent] = []
+    for ev in events:
+        in_speech = any(s <= ev.timestamp_s <= e for s, e in speech_windows)
+        if in_speech and ev.event_type in {"ambient", "noise"}:
+            refined.append(
+                AudioEvent(
+                    timestamp_s=ev.timestamp_s,
+                    event_type="speech",
+                    details=f"Speech-aligned relabel ({ev.event_type}->speech)",
+                    confidence=max(ev.confidence, 0.72),
+                    rms_energy=ev.rms_energy,
+                    zcr=ev.zcr,
+                    spectral_centroid=ev.spectral_centroid,
+                )
+            )
+        else:
+            refined.append(ev)
+    return refined
+
 
 def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
     """
@@ -924,6 +1408,15 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
             warnings.simplefilter("ignore")
             y, sr = librosa.load(audio_path, sr=16000, mono=True)
 
+        # Scene-adaptive thresholds: calibrate sensitivity to recording loudness/noise.
+        global_rms = float(np.sqrt(np.mean(y ** 2))) if len(y) else 0.0
+        abs_y = np.abs(y) if len(y) else np.array([0.0], dtype=np.float32)
+        p90 = float(np.percentile(abs_y, 90))
+        noise_floor = max(0.0025, global_rms * 0.40)
+        speech_floor = max(0.010, noise_floor * 2.2)
+        scream_floor = max(0.045, p90 * 0.65)
+        gunshot_floor = max(0.085, p90 * 0.95)
+
         hop = sr  # 1-second windows
         # For gunshot: also scan sub-second (50ms) windows for transients
         transient_ts: list[float] = []
@@ -935,7 +1428,7 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
                 break
             rms_s = float(np.sqrt(np.mean(chunk_s ** 2)))
             # Gunshot: sudden spike >5× previous 50ms RMS, very high energy
-            if rms_s > 0.12 and rms_s > prev_rms * 5.0:
+            if rms_s > gunshot_floor and rms_s > prev_rms * 4.5:
                 transient_ts.append(float(j) / sr)
             prev_rms = rms_s
 
@@ -946,7 +1439,7 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
             ts = float(i) / sr
 
             rms = float(np.sqrt(np.mean(chunk ** 2)))
-            if rms < 0.003:
+            if rms < noise_floor:
                 events.append(AudioEvent(ts, "silence", "No signal", 0.96, rms, 0.0, 0.0))
                 continue
 
@@ -963,7 +1456,7 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
 
             # ── Gunshot: impulsive transient in this 1-second window ──────────
             has_transient = any(ts <= t < ts + 1.0 for t in transient_ts)
-            if has_transient and flatness > 0.20 and rms > 0.10:
+            if has_transient and flatness > 0.18 and rms > gunshot_floor:
                 conf = min(0.90, 0.60 + rms * 1.5 + flatness)
                 events.append(AudioEvent(ts, "gunshot",
                     f"Impulsive transient (rms={rms:.3f}, flatness={flatness:.3f})",
@@ -972,7 +1465,7 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
 
             # ── Scream: high-pitch, sustained, high energy, high ZCR ─────────
             # Screams: cent > 2500Hz, ZCR > 0.18, rms > 0.05, high rolloff
-            if cent > 2500 and zcr > 0.18 and rms > 0.05 and rolloff > 4000:
+            if cent > 2400 and zcr > 0.17 and rms > scream_floor and rolloff > 3800:
                 conf = min(0.92, 0.55 + (cent / 8000) * 0.3 + zcr * 0.5 + rms * 1.5)
                 events.append(AudioEvent(ts, "scream",
                     f"Scream (cent={cent:.0f}Hz, zcr={zcr:.3f}, rms={rms:.3f})",
@@ -980,9 +1473,9 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
                 continue
 
             # ── Standard classification ───────────────────────────────────────
-            if rms < 0.012:
+            if rms < speech_floor:
                 evt, dsc, conf = "ambient", f"Quiet bg (rms={rms:.4f})", 0.72
-            elif zcr > 0.10 and 700 < cent < 4800 and mfcc_d_m > 3.5 and rms > 0.012:
+            elif zcr > 0.09 and 650 < cent < 5000 and mfcc_d_m > 3.2 and rms > speech_floor:
                 conf = min(0.96, 0.55 + zcr * 1.5 + mfcc_d_m * 0.015 + rms * 2.5)
                 evt  = "speech"
                 dsc  = f"Speech (zcr={zcr:.3f}, cent={cent:.0f}Hz, ΔMFCC={mfcc_d_m:.1f})"
@@ -1003,7 +1496,7 @@ def classify_audio(audio_path: str, duration: float) -> list[AudioEvent]:
 
     except Exception as exc:
         print(f"  [WARN] Audio classification failed: {exc}")
-    return events
+    return _smooth_audio_event_sequence(events)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1443,9 +1936,38 @@ class DetectraAnalyzer:
         self._surv  = SurveillanceDetector()
         self._validator = PostProcessingValidator()
         self._last_detected_languages: list[dict] = []
+        # v5 accuracy engine
+        self._identity_tracker = IdentityTracker() if (USE_IDENTITY_REID and IdentityTracker) else None
+        self._cadence = AnkleCadenceClassifier() if (USE_CADENCE and AnkleCadenceClassifier) else None
+        self._reasoner = ReasoningAgent() if (USE_REASONING and ReasoningAgent) else None
+        self._clip_logos = None
+        if USE_CLIP_LOGOS and ClipLogoMatcher:
+            try:
+                self._clip_logos = ClipLogoMatcher(
+                    brands=DEFAULT_LOGO_BRANDS,
+                    score_threshold=CLIP_LOGO_THRESH,
+                    regions=CLIP_LOGO_REGIONS,
+                    verbose=True,
+                )
+            except Exception as exc:
+                print(f"  [CLIP] Logos disabled — init failed: {exc}")
+                self._clip_logos = None
+            if self._clip_logos is not None and not self._clip_logos.available:
+                err = getattr(self._clip_logos, "load_error", None) or "unknown reason"
+                print(f"  [CLIP] Visual logo matcher unavailable: {err}")
+                self._clip_logos = None
         print("\n" + "="*70)
-        print("  Detectra AI v4.0 — Enhanced Production Analyzer")
-        print("  YOLOv8s-Seg + Pose + Whisper-Small + MFCC + Fusion Transformer")
+        print("  Detectra AI v5.0 — Ultra Accuracy Edition")
+        engine = "faster-whisper" if (USE_FASTER_WHISPER and faster_whisper_available()) else "openai-whisper"
+        feat = []
+        if self._identity_tracker: feat.append("ReID-Identity")
+        if self._cadence: feat.append("Cadence-FFT")
+        if self._reasoner: feat.append("ReasoningAgent")
+        if self._clip_logos: feat.append("CLIP-Logos")
+        print(f"  Engine: {engine}-{WHISPER_MODEL} | YOLO={YOLO_SEG_MODEL} | "
+              f"Pose={YOLO_POSE_MODEL}")
+        if feat:
+            print(f"  Accuracy modules: {' + '.join(feat)}")
         print("="*70)
 
     def _load_seg(self):
@@ -1540,6 +2062,9 @@ class DetectraAnalyzer:
             analysis.speech_segments     = self._run_whisper(audio_path, dur)
             analysis.detected_languages  = self._last_detected_languages
             analysis.audio_events        = classify_audio(str(audio_path), dur)
+            analysis.audio_events        = align_audio_events_with_speech(
+                analysis.audio_events, analysis.speech_segments
+            )
             audio_path.unlink(missing_ok=True)
             (OUTPUT_DIR / f"_tmp_{video_path.stem}.wav").unlink(missing_ok=True)
         else:
@@ -1558,18 +2083,46 @@ class DetectraAnalyzer:
             analysis.frame_results, analysis.audio_events)
         print(f"    {len(analysis.surveillance_events)} events")
 
-        print(f"\n  [5/6] Post-processing: EMA smoothing + cross-modal dedup + validation")
+        print(f"\n  [5/7] Post-processing: EMA smoothing + cross-modal dedup + validation")
         self._validator.validate(analysis)
         mx2 = max((fi.anomaly_score for fi in analysis.fusion_insights), default=0.0)
         print(f"    Validated | max_anomaly={mx2:.3f} | surv_events={len(analysis.surveillance_events)}")
 
-        print(f"\n  [6/6] Output: stats + labeled video + report + RAG JSON")
+        print(f"\n  [6/7] Identity Re-ID + Agentic Reasoning")
+        if self._identity_tracker is not None:
+            analysis.identities = self._identity_tracker.summary()
+            print(f"    Identities: {self._identity_tracker.distinct_count} "
+                  f"appearance-merged (ByteTrack ID segments: {len(analysis.unique_track_ids)})")
+        if self._reasoner is not None:
+            try:
+                analysis.reasoning = self._reasoner.synthesize(_build_reasoning_payload(analysis))
+                analysis.accuracy_engine_version = self._reasoner.version
+                threat = (analysis.reasoning.get("threat_assessment") or {}).get("level", "?")
+                corr_n = len(analysis.reasoning.get("cross_modal_correlations") or [])
+                print(f"    Reasoning: threat={threat} | "
+                      f"{corr_n} cross-modal correlation(s) | "
+                      f"{len(analysis.reasoning.get('timeline_narrative') or [])} narrative blocks")
+            except Exception as exc:
+                print(f"    [WARN] Reasoning failed: {exc}")
+                analysis.reasoning = {}
+
+        # Record which speech engine was used (for the report)
+        analysis.speech_engine = (
+            f"faster-whisper-{WHISPER_MODEL}"
+            if (USE_FASTER_WHISPER and faster_whisper_available())
+            else f"openai-whisper-{WHISPER_MODEL}"
+        )
+
+        print(f"\n  [7/7] Output: stats + labeled video + report + RAG JSON")
         self._compute_stats(analysis)
         analysis.labeled_video_path = self._write_labeled_video(video_path, analysis)
         analysis.report_path        = self._write_html_report(analysis)
         self._write_rag_json(analysis)
         analysis.processing_time_s  = time.perf_counter() - t0
-        print(f"\n  Done: {analysis.processing_time_s:.1f}s | persons={len(analysis.unique_track_ids)} | concurrent_peak={analysis.max_concurrent_persons}")
+        print(
+            f"\n  Done: {analysis.processing_time_s:.1f}s | distinct_individuals={analysis.distinct_individuals} "
+            f"| track_ID_segments={len(analysis.unique_track_ids)} | concurrent_peak={analysis.max_concurrent_persons}"
+        )
         return analysis
 
     # ── IoU helper ─────────────────────────────────────────────────────────
@@ -1590,6 +2143,9 @@ class DetectraAnalyzer:
 
         frame_results = []; all_logos = []; all_tids = set()
         track_ages: dict = defaultdict(int)
+        # Reset per-video identity tracker so each clip's PIDs start at 1
+        if self._identity_tracker is not None:
+            self._identity_tracker.reset()
 
         cap      = cv2.VideoCapture(str(video_path))
         src_fps  = analysis.fps
@@ -1647,6 +2203,11 @@ class DetectraAnalyzer:
                         cls_id = int(box.cls[0])
                         cname  = names.get(cls_id, f"cls_{cls_id}")
                         conf   = float(box.conf[0])
+                        if cname == "person":
+                            if conf < PERSON_MIN_CONF:
+                                continue
+                        elif conf < OBJECT_MIN_CONF:
+                            continue
                         x1,y1,x2,y2 = [float(v) for v in box.xyxyn[0]]
                         tid    = int(box.id[0]) if box.id is not None else None
 
@@ -1681,6 +2242,44 @@ class DetectraAnalyzer:
                 for det in detections:
                     if det.track_id in actions_map:
                         det.action = actions_map[det.track_id]
+
+                # ── Cadence-based action refinement (walk/jog/run) ─────────
+                if self._cadence is not None:
+                    for det in detections:
+                        if det.class_name != "person" or det.track_id is None:
+                            continue
+                        if det.pose is None:
+                            continue
+                        l_ank = det.pose.get("l_ankle")
+                        r_ank = det.pose.get("r_ankle")
+                        # Use whichever ankle has higher confidence
+                        if l_ank[2] >= 0.30 or r_ank[2] >= 0.30:
+                            ay = l_ank[1] if l_ank[2] >= r_ank[2] else r_ank[1]
+                            self._cadence.push(int(det.track_id), ts, float(ay))
+                        # Only override actions in the locomotion family
+                        if det.action in ("walking", "slow walking", "running",
+                                          "fast walking"):
+                            inferred = self._cadence.classify(int(det.track_id))
+                            if inferred and inferred != det.action:
+                                det.action = inferred
+
+                # ── Identity Re-ID (appearance fingerprint → stable PID) ────
+                if self._identity_tracker is not None:
+                    records = []
+                    for det in detections:
+                        if det.class_name != "person" or det.track_id is None:
+                            continue
+                        if det.track_age < MIN_TRACK_AGE:
+                            continue
+                        records.append({
+                            "track_id": int(det.track_id),
+                            "bbox": (det.x1, det.y1, det.x2, det.y2),
+                            "frame": frame_enh,
+                            "mask": det.mask,
+                        })
+                    if records:
+                        self._identity_tracker.update(ts, records)
+
                 dom = action_rec.get_dominant(detections)
 
                 flags = []
@@ -1701,9 +2300,32 @@ class DetectraAnalyzer:
 
                 if fi % logo_int == 0:
                     all_logos.extend(self._logo.detect(frame, ts))
+                    if self._clip_logos is not None:
+                        try:
+                            clip_hits = self._clip_logos.detect(frame, ts)
+                        except Exception as exc:
+                            print(f"  [WARN] CLIP logo matcher failed: {exc}")
+                            clip_hits = []
+                        for hit in clip_hits:
+                            all_logos.append(LogoDetection(
+                                timestamp_s=hit["timestamp_s"],
+                                brand=hit["brand"],
+                                text_found=hit.get("text_found", ""),
+                                confidence=float(hit["confidence"]),
+                                bbox=hit["bbox"],
+                                source=hit.get("source", "clip"),
+                            ))
 
-                pc = sum(1 for d in detections if d.class_name == "person")
-                pid = {d.track_id for d in detections if d.class_name=="person" and d.track_id}
+                # Stable person count: only include persons with mature tracks or
+                # high confidence to reduce one-frame ghosts.
+                stable_persons = [
+                    d for d in detections
+                    if d.class_name == "person" and (
+                        d.track_age >= MIN_TRACK_AGE or d.confidence >= 0.55
+                    )
+                ]
+                pc = len(stable_persons)
+                pid = {d.track_id for d in stable_persons if d.track_id}
                 frame_results.append(FrameResult(
                     frame_idx=fi, timestamp_s=ts, detections=detections,
                     person_count=pc, unique_track_ids=pid,
@@ -1727,12 +2349,38 @@ class DetectraAnalyzer:
         """
         Multilingual-aware transcription.
 
-        Strategy: transcribe with language=None so Whisper uses its internal
-        per-30-second sliding window to detect language. This handles videos
-        where two speakers use different languages (e.g., German + English).
-        Each segment's language code is stored individually so the frontend
-        can show per-segment language badges.
+        Prefers ``faster-whisper`` with Silero VAD (much higher accuracy and
+        4-8× faster on CPU). Falls back to ``openai-whisper`` if faster-whisper
+        is not installed or fails. Per-segment language detection allows the
+        frontend to show language badges for multilingual conversations.
         """
+        # ── v5: faster-whisper + Silero VAD path ─────────────────────────────
+        if USE_FASTER_WHISPER and transcribe_audio_enhanced is not None and faster_whisper_available():
+            try:
+                segments_data, languages_data = transcribe_audio_enhanced(
+                    audio_path,
+                    model_size=WHISPER_MODEL,
+                    beam_size=WHISPER_BEAM_SIZE,
+                    verbose=True,
+                )
+                segs = [
+                    SpeechSegment(
+                        start_s=float(s["start_s"]),
+                        end_s=float(s["end_s"]),
+                        text=str(s.get("text", "")),
+                        language=str(s.get("language") or ""),
+                        language_name=str(s.get("language_name") or ""),
+                        confidence=float(s.get("confidence", 0.0)),
+                        is_noise=bool(s.get("is_noise", False)),
+                    )
+                    for s in segments_data
+                ]
+                self._last_detected_languages = languages_data or []
+                return segs
+            except Exception as exc:
+                print(f"  [Speech] faster-whisper path failed ({exc}); "
+                      f"falling back to openai-whisper")
+
         import whisper as _w
         wm = self._load_whisper()
         segs = []
@@ -1766,6 +2414,9 @@ class DetectraAnalyzer:
                 logprob_threshold=-1.2,
                 compression_ratio_threshold=2.4,
                 condition_on_previous_text=False,
+                temperature=0.0,
+                beam_size=5,
+                best_of=5,
                 initial_prompt=None,
             )
 
@@ -1836,15 +2487,30 @@ class DetectraAnalyzer:
             m,s=divmod(seg.start_s,60)
             parts.append(f"[{int(m):02d}:{s:05.2f}] {'[noise]' if seg.is_noise else seg.text}")
         analysis.full_transcript="\n".join(parts)
-        up=len(analysis.unique_track_ids)
+        # Identity-aware counting: prefer appearance-merged identities when available
+        if self._identity_tracker is not None and self._identity_tracker.distinct_count > 0:
+            analysis.distinct_individuals = self._identity_tracker.distinct_count
+        else:
+            analysis.distinct_individuals = estimate_distinct_individuals_from_frames(analysis.frame_results)
+        up_frag = len(analysis.unique_track_ids)
+        up = analysis.distinct_individuals
         da=Counter(actions).most_common(1)[0][0] if actions else "unknown"
         mx=max((fi.anomaly_score for fi in analysis.fusion_insights),default=0.0)
         risk=FusionEngine._severity(mx)
         alerts=sum(1 for fi in analysis.fusion_insights if fi.alert)
         sv=len(analysis.surveillance_events)
         ps=[f"{analysis.width}x{analysis.height} | {analysis.duration_s:.1f}s."]
-        if up>0: ps.append(f"{up} unique persons; peak {max_p} at t={peak_ts:.1f}s. Action: {da}.")
-        else: ps.append("No persons detected.")
+        if up > 0:
+            if up_frag > up:
+                ps.append(
+                    f"{up} distinct individual(s) (ByteTrack used {up_frag} ID segments — "
+                    f"normal when a person leaves/re-enters or is occluded); peak {max_p} concurrent "
+                    f"at t={peak_ts:.1f}s. Action: {da}."
+                )
+            else:
+                ps.append(f"{up} distinct individual(s); peak {max_p} at t={peak_ts:.1f}s. Action: {da}.")
+        else:
+            ps.append("No persons detected.")
         top=[c for c,_ in Counter(classes).most_common(8) if c!="person"]
         if top: ps.append(f"Objects: {', '.join(top[:5])}.")
         sr=[s for s in analysis.speech_segments if not s.is_noise]
@@ -1857,7 +2523,7 @@ class DetectraAnalyzer:
             ps.append(f"Logos: {', '.join(brands)}.")
         ps.append(f"Risk: {risk.upper()} (max={mx:.2f}, {alerts} alerts, {sv} surv events).")
         analysis.summary=" ".join(ps)
-        print(f"    Stats | risk={risk} | persons={up} | classes={len(analysis.class_frequencies)}")
+        print(f"    Stats | risk={risk} | distinct_individuals={up} (track_fragments={up_frag}) | classes={len(analysis.class_frequencies)}")
 
     # ── Labeled Video ───────────────────────────────────────────────────────
     def _write_labeled_video(self, video_path: Path, analysis: VideoAnalysis) -> Path:
@@ -1960,7 +2626,9 @@ class DetectraAnalyzer:
         mx=max((fi.anomaly_score for fi in analysis.fusion_insights),default=0.0)
         risk=FusionEngine._severity(mx); alerts=sum(1 for fi in analysis.fusion_insights if fi.alert)
         RC={"normal":"#8b949e","low":"#60a5fa","medium":"#fbbf24","high":"#fb923c","critical":"#f87171"}
-        rc=RC.get(risk,"#8b949e"); up=len(analysis.unique_track_ids)
+        rc=RC.get(risk,"#8b949e")
+        up = analysis.distinct_individuals
+        up_frag = len(analysis.unique_track_ids)
 
         # Chart data
         pts  =json.dumps([f"{fr.timestamp_s:.1f}" for fr in analysis.frame_results])
@@ -2048,6 +2716,81 @@ class DetectraAnalyzer:
             return rows or "<tr><td colspan='5' class='c muted'>None</td></tr>"
 
         gen=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # ── v5 Reasoning Agent payload (already computed in analyze()) ──────
+        reasoning = analysis.reasoning or {}
+        threat = reasoning.get("threat_assessment", {}) or {}
+        threat_level = (threat.get("level") or "LOW").lower()
+        threat_score = float(threat.get("score") or 0.0)
+        threat_factors = threat.get("contributing_factors") or []
+        recommendation = reasoning.get("recommendation") or ""
+        exec_brief = reasoning.get("executive_brief") or analysis.summary
+        narrative_blocks = reasoning.get("timeline_narrative") or []
+        correlations = reasoning.get("cross_modal_correlations") or []
+        key_ent = reasoning.get("key_entities") or {}
+        identities_list = analysis.identities or []
+        speech_engine_lbl = analysis.speech_engine or f"openai-whisper-{WHISPER_MODEL}"
+
+        def _esc(s) -> str:
+            return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+
+        def reasoning_rows() -> str:
+            if not narrative_blocks:
+                return "<tr><td colspan='4' class='c muted'>Agentic reasoning unavailable</td></tr>"
+            rows = ""
+            for blk in narrative_blocks:
+                ws = blk.get("window_start_s", 0)
+                we = blk.get("window_end_s", 0)
+                m1, s1 = divmod(ws, 60); m2, s2 = divmod(we, 60)
+                rng = f"{int(m1):02d}:{int(s1):02d}–{int(m2):02d}:{int(s2):02d}"
+                anomaly = blk.get("anomaly_max", 0.0)
+                alerts_n = blk.get("alerts", 0)
+                surv_n = len(blk.get("surveillance_events", []))
+                rows += (
+                    f"<tr><td class='mono'>{rng}</td>"
+                    f"<td>{_esc(blk.get('narrative', ''))}</td>"
+                    f"<td class='c mono'>{anomaly:.2f}</td>"
+                    f"<td class='c mono'>{alerts_n}+{surv_n}</td></tr>"
+                )
+            return rows
+
+        def correlation_rows() -> str:
+            if not correlations:
+                return "<tr><td colspan='3' class='c muted'>No cross-modal correlations detected</td></tr>"
+            rows = ""
+            for c in correlations[:30]:
+                rows += (
+                    f"<tr><td class='mono'>{_esc(c.get('kind', ''))}</td>"
+                    f"<td>{_esc(c.get('description', ''))}</td>"
+                    f"<td class='c mono'>{float(c.get('confidence', 0.0)):.0%}</td></tr>"
+                )
+            return rows
+
+        def identity_rows() -> str:
+            if not identities_list:
+                return "<tr><td colspan='4' class='c muted'>Identity tracker disabled</td></tr>"
+            rows = ""
+            for ident in sorted(identities_list, key=lambda x: x.get("pid", 0)):
+                pid = ident.get("pid")
+                tids = ", ".join(str(t) for t in (ident.get("track_ids") or []))
+                first_s = ident.get("first_seen_s") or 0.0
+                last_s = ident.get("last_seen_s") or 0.0
+                m1, s1 = divmod(first_s, 60); m2, s2 = divmod(last_s, 60)
+                samples = ident.get("samples", 0)
+                rows += (
+                    f"<tr><td class='mono'>Person {pid}</td>"
+                    f"<td class='mono'>{int(m1):02d}:{s1:05.2f} → {int(m2):02d}:{s2:05.2f}</td>"
+                    f"<td class='c mono'>{samples}</td>"
+                    f"<td class='small'>{tids or '—'}</td></tr>"
+                )
+            return rows
+
+        def threat_factors_html() -> str:
+            if not threat_factors:
+                return "<li>No significant risk signals</li>"
+            return "".join(f"<li>{_esc(f)}</li>" for f in threat_factors)
+
         css="""
 :root{--bg:#0d1117;--bg2:#161b22;--bg3:#1f2937;--bg4:#0a0f17;
 --border:#30363d;--text:#e6edf3;--t2:#8b949e;--t3:#6e7681;
@@ -2111,12 +2854,12 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 
         html=f"""<!DOCTYPE html><html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Detectra AI v4 — {analysis.video_name}</title>
+<title>Detectra AI v5 — {analysis.video_name}</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>{css}</style></head><body>
 <div class="hero">
-  <h1><span class="h1g">Detectra</span> <span class="h1w">AI</span> <span style="font-size:16px;color:var(--t3);font-weight:400">v3.0</span></h1>
-  <div class="sub">Enhanced Deep Video Intelligence — {analysis.video_name}</div>
+  <h1><span class="h1g">Detectra</span> <span class="h1w">AI</span> <span style="font-size:16px;color:var(--t3);font-weight:400">v5.0 · Ultra Accuracy</span></h1>
+  <div class="sub">Agentic Multimodal Video Intelligence — {analysis.video_name}</div>
   <div class="meta">
     <div class="mi"><label>Video</label><value>{analysis.video_path.name}</value></div>
     <div class="mi"><label>Duration</label><value>{analysis.duration_s:.1f}s</value></div>
@@ -2136,7 +2879,7 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 <div class="section"><div class="sh"><span class="sn">01</span><h2>Executive Summary</h2></div>
 <div class="sb"><div class="sum">{analysis.summary}</div>
 <div class="sg">
-  <div class="sc"><div class="v">{up}</div><div class="l">Unique Persons</div></div>
+  <div class="sc"><div class="v">{up}</div><div class="l">Distinct individuals{f' ({up_frag} tracker IDs)' if up_frag > up else ''}</div></div>
   <div class="sc"><div class="v">{analysis.max_persons_in_frame}</div><div class="l">Peak Count</div></div>
   <div class="sc"><div class="v">{len(analysis.class_frequencies)}</div><div class="l">Object Classes</div></div>
   <div class="sc"><div class="v">{analysis.total_object_count}</div><div class="l">Detections</div></div>
@@ -2151,29 +2894,66 @@ tbody tr:hover td{background:rgba(255,255,255,.025)}
 <div class="cr"><div class="cb"><canvas id="c3"></canvas></div><div class="cb"><canvas id="c4"></canvas></div></div>
 <div class="cr"><div class="cb"><canvas id="c5"></canvas></div><div class="cb"><canvas id="c6"></canvas></div></div>
 </div></div>
-<div class="section"><div class="sh"><span class="sn">02</span><h2>Object Detection &amp; Segmentation</h2><span class="tag">YOLOv8s-Seg + ByteTrack</span></div>
+
+<div class="section"><div class="sh"><span class="sn">02</span><h2>Agentic Executive Brief</h2><span class="tag">ReasoningAgent v{analysis.accuracy_engine_version or '5.0'}</span></div>
+<div class="sb">
+  <div class="sum">{_esc(exec_brief)}</div>
+  <div class="rb rb-{threat_level}" style="margin-top:14px">
+    <span>THREAT: {threat_level.upper()}</span>
+    <span>Score: {threat_score:.2f}</span>
+    <span>Engine: {_esc(speech_engine_lbl)}</span>
+    <span>Identities: {len(identities_list) or analysis.distinct_individuals}</span>
+  </div>
+  <div style="margin-top:14px">
+    <strong style="color:var(--green);font-size:12px;text-transform:uppercase;letter-spacing:.06em">Contributing factors</strong>
+    <ul style="margin:8px 0 0 22px;color:var(--t2)">{threat_factors_html()}</ul>
+  </div>
+  <div style="margin-top:14px;padding:12px 16px;background:rgba(0,229,160,.06);border-left:3px solid var(--green);border-radius:0 8px 8px 0;color:var(--t2)">
+    <strong style="color:var(--green)">Recommendation:</strong> {_esc(recommendation)}
+  </div>
+</div></div>
+
+<div class="section"><div class="sh"><span class="sn">03</span><h2>Hierarchical Timeline Narrative</h2><span class="tag">Per-block agentic synthesis</span></div>
+<div class="sb"><table>
+  <thead><tr><th>Window</th><th>Narrative</th><th class="c">Max&nbsp;Anomaly</th><th class="c">Alerts+Events</th></tr></thead>
+  <tbody>{reasoning_rows()}</tbody>
+</table></div></div>
+
+<div class="section"><div class="sh"><span class="sn">04</span><h2>Identity Tracking (Appearance Re-ID)</h2><span class="tag">HSV-fingerprint + spatial coherence</span></div>
+<div class="sb"><table>
+  <thead><tr><th>Person</th><th>Visible Window</th><th class="c">Samples</th><th>Merged Track IDs</th></tr></thead>
+  <tbody>{identity_rows()}</tbody>
+</table></div></div>
+
+<div class="section"><div class="sh"><span class="sn">05</span><h2>Cross-Modal Correlations</h2><span class="tag">Visual ↔ Audio ↔ Speech</span></div>
+<div class="sb"><table>
+  <thead><tr><th>Kind</th><th>Description</th><th class="c">Confidence</th></tr></thead>
+  <tbody>{correlation_rows()}</tbody>
+</table></div></div>
+
+<div class="section"><div class="sh"><span class="sn">06</span><h2>Object Detection &amp; Segmentation</h2><span class="tag">YOLOv8s-Seg + ByteTrack</span></div>
 <div class="sb"><table><thead><tr><th>Class</th><th class="c">Count</th><th>Bar</th></tr></thead><tbody>{obj_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">03</span><h2>Action Recognition</h2><span class="tag">YOLOv8n-Pose + Kinematics</span></div>
+<div class="section"><div class="sh"><span class="sn">07</span><h2>Action Recognition</h2><span class="tag">YOLOv8n-Pose + Cadence-FFT + Kinematics</span></div>
 <div class="sb"><table><thead><tr><th>Action</th><th>Frames</th><th>Coverage</th></tr></thead><tbody>{act_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">04</span><h2>Logo &amp; Brand Detection</h2><span class="tag">EasyOCR + Brand Dictionary</span></div>
+<div class="section"><div class="sh"><span class="sn">08</span><h2>Logo &amp; Brand Detection</h2><span class="tag">EasyOCR{' + CLIP-ViT' if self._clip_logos else ''} + Brand Dictionary</span></div>
 <div class="sb"><table><thead><tr><th>Timestamp</th><th>Brand</th><th>OCR Text</th><th class="c">Confidence</th></tr></thead><tbody>{logo_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">05</span><h2>Speech Transcription</h2><span class="tag">Whisper {WHISPER_MODEL} + noisereduce</span></div>
+<div class="section"><div class="sh"><span class="sn">09</span><h2>Speech Transcription</h2><span class="tag">{_esc(speech_engine_lbl)} + Silero VAD + noisereduce</span></div>
 <div class="sb"><table><thead><tr><th>Time Range</th><th>Text</th><th>Language</th><th class="c">Conf</th></tr></thead><tbody>{speech_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">06</span><h2>Audio Classification</h2><span class="tag">Librosa MFCC — 1s windows</span></div>
+<div class="section"><div class="sh"><span class="sn">10</span><h2>Audio Classification</h2><span class="tag">Librosa MFCC — 1s windows</span></div>
 <div class="sb"><table><thead><tr><th>Timestamp</th><th>Type</th><th>Details</th><th class="c">Conf</th></tr></thead><tbody>{audio_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">07</span><h2>Surveillance Events</h2><span class="tag">Fall / Fight / Loitering / Crowd / Abandoned Object</span></div>
+<div class="section"><div class="sh"><span class="sn">11</span><h2>Surveillance Events</h2><span class="tag">Fall / Fight / Loitering / Crowd / Abandoned Object</span></div>
 <div class="sb"><table><thead><tr><th>Timestamp</th><th>Event</th><th>Description</th><th class="c">Conf</th></tr></thead><tbody>{surv_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">08</span><h2>Multimodal Fusion Engine</h2><span class="tag">4-Head Cross-Attention Transformer — {FUSION_WINDOW:.0f}s Windows</span></div>
+<div class="section"><div class="sh"><span class="sn">12</span><h2>Multimodal Fusion Engine</h2><span class="tag">4-Head Cross-Attention Transformer — {FUSION_WINDOW:.0f}s Windows</span></div>
 <div class="sb">
 <div class="arch">Visual Enc [COCO-80 + action-6 + flow-3] FC(89→128) | Audio Enc [type-5+RMS+ZCR+cent+speech] FC(9→128)
 Cross-Attention ×2 (4 heads, d=128): visual queries attend audio keys/values
 Temporal Self-Attention | EMA anomaly smoothing (alpha=0.5)
 Scene: 16 labels | Anomaly: 0..1 | V-A Alignment: cosine</div>
 <table><thead><tr><th>Window</th><th>Scene</th><th class="c">Anomaly</th><th>Severity</th><th class="c">Align</th><th>Factors</th></tr></thead><tbody>{fusion_rows()}</tbody></table></div></div>
-<div class="section"><div class="sh"><span class="sn">09</span><h2>Frame Timeline</h2></div>
+<div class="section"><div class="sh"><span class="sn">13</span><h2>Frame Timeline</h2></div>
 <div class="sb"><table><thead><tr><th>Time</th><th>Persons/Action/Flags</th><th>Objects</th><th class="c">Count</th><th class="c">Flow</th></tr></thead><tbody>{timeline_rows()}</tbody></table></div></div>
 </div>
-<div class="footer">Detectra AI v4.0 &mdash; UCP FYP F25AI009 &mdash; {gen}</div>
+<div class="footer">Detectra AI v5.0 — Ultra Accuracy Edition &mdash; UCP FYP F25AI009 &mdash; {gen}</div>
 <script>
 const CD={{color:'#8b949e',plugins:{{legend:{{labels:{{color:'#8b949e',font:{{size:11}}}}}}}},scales:{{x:{{ticks:{{color:'#6e7681',maxTicksLimit:20}},grid:{{color:'#21262d'}}}},y:{{ticks:{{color:'#6e7681'}},grid:{{color:'#21262d'}}}}}}}}
 new Chart(document.getElementById('c1'),{{type:'line',data:{{labels:{pts},datasets:[{{label:'Persons',data:{pcnt},borderColor:'#00e5a0',backgroundColor:'rgba(0,229,160,.08)',borderWidth:2,pointRadius:0,fill:true,tension:0.3}}]}},options:{{...CD,plugins:{{...CD.plugins,title:{{display:true,text:'Person Count',color:'#e6edf3',font:{{size:12}}}}}}}}}}  );
@@ -2219,9 +2999,9 @@ new Chart(document.getElementById('c6'),{{type:'bar',data:{{labels:{actlbl},data
 
         doc: dict = {
             # ── Identity ────────────────────────────────────────────────────
-            "schema_version": "detectra_v4_rag_1.0",
+            "schema_version": "detectra_v5_rag_1.0",
             "generated_at": datetime.now().isoformat(),
-            "analyzer_version": "Detectra AI v4.0",
+            "analyzer_version": "Detectra AI v5.0 (Ultra Accuracy)",
 
             # ── Video metadata ───────────────────────────────────────────────
             "video": {
@@ -2239,7 +3019,9 @@ new Chart(document.getElementById('c6'),{{type:'bar',data:{{labels:{actlbl},data
                 "max_anomaly_score": round(mx, 4),
                 "alert_count": alerts,
                 "surveillance_event_count": len(analysis.surveillance_events),
-                "unique_persons_ever": len(analysis.unique_track_ids),
+                "distinct_individuals": analysis.distinct_individuals,
+                "track_id_segments": len(analysis.unique_track_ids),
+                "unique_persons_ever": analysis.distinct_individuals,
                 "peak_concurrent_persons": analysis.max_concurrent_persons,
                 "peak_activity_time_s": round(analysis.peak_activity_ts, 2),
                 "peak_activity_time_str": ts_str(analysis.peak_activity_ts),
@@ -2369,6 +3151,35 @@ new Chart(document.getElementById('c6'),{{type:'bar',data:{{labels:{actlbl},data
 
             # ── Full transcript (flat string for embedding) ───────────────────
             "full_transcript_text": analysis.full_transcript,
+
+            # ── v5: appearance-merged identities ──────────────────────────────
+            "identities": [
+                {
+                    "pid": ident.get("pid"),
+                    "track_ids": ident.get("track_ids", []),
+                    "samples": ident.get("samples", 0),
+                    "first_seen_s": ident.get("first_seen_s"),
+                    "first_seen_str": ts_str(ident.get("first_seen_s", 0.0)),
+                    "last_seen_s": ident.get("last_seen_s"),
+                    "last_seen_str": ts_str(ident.get("last_seen_s", 0.0)),
+                }
+                for ident in (analysis.identities or [])
+            ],
+
+            # ── v5: agentic reasoning synthesis ────────────────────────────────
+            "agentic_reasoning": analysis.reasoning or {},
+
+            # ── v5: engine metadata ────────────────────────────────────────────
+            "engine": {
+                "speech": analysis.speech_engine,
+                "accuracy_engine": analysis.accuracy_engine_version,
+                "yolo_seg_model": YOLO_SEG_MODEL,
+                "yolo_pose_model": YOLO_POSE_MODEL,
+                "whisper_model": WHISPER_MODEL,
+                "identity_reid": bool(self._identity_tracker is not None),
+                "cadence_classifier": bool(self._cadence is not None),
+                "clip_logos": bool(self._clip_logos is not None),
+            },
         }
 
         out = OUTPUT_DIR / f"{analysis.video_name}_rag.json"
@@ -2395,7 +3206,8 @@ def _write_combined_report(results: list):
         cards+=(f'<div class="card"><div class="ch"><span class="cn">{r.video_name[:38]}</span>'
                 f'<span style="color:{rc};font-size:11px;font-weight:700">{risk.upper()}</span></div>'
                 f'<div class="cb"><div class="meta">{r.duration_s:.1f}s | {r.width}x{r.height}</div>'
-                f'<table class="mt"><tr><td>Unique Persons</td><td><b>{len(r.unique_track_ids)}</b></td></tr>'
+                f'<table class="mt"><tr><td>Distinct individuals</td><td><b>{r.distinct_individuals}</b></td></tr>'
+                f'<tr><td>Tracker ID segments</td><td><b>{len(r.unique_track_ids)}</b></td></tr>'
                 f'<tr><td>Peak Persons</td><td><b>{r.max_persons_in_frame}</b></td></tr>'
                 f'<tr><td>Language</td><td><b>{r.detected_language_name or "N/A"}</b></td></tr>'
                 f'<tr><td>Logos</td><td><b>{len(r.logo_detections)}</b></td></tr>'
@@ -2434,7 +3246,7 @@ def _print_summary(a: VideoAnalysis):
     alerts=sum(1 for fi in a.fusion_insights if fi.alert)
     print(f"\n  {'━'*64}\n  RESULTS: {a.video_name}\n  {'━'*64}")
     print(f"  Duration      : {a.duration_s:.1f}s")
-    print(f"  Unique Persons: {len(a.unique_track_ids)}")
+    print(f"  Distinct individuals: {a.distinct_individuals} (tracker ID segments: {len(a.unique_track_ids)})")
     print(f"  Peak Persons  : {a.max_persons_in_frame} at t={a.peak_activity_ts:.1f}s")
     print(f"  Object Classes: {list(a.class_frequencies.keys())[:8]}")
     print(f"  Top Actions   : {list(a.action_frequencies.keys())[:6]}")

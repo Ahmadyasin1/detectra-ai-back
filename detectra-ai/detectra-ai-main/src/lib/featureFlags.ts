@@ -1,6 +1,8 @@
 // Feature flag configuration for safe gradual rollout
 // Use localStorage override for testing: localStorage.setItem('detecra-features', JSON.stringify({ enhancedErrorRecovery: true }))
 
+import { useState, useEffect } from 'react';
+
 interface FeatureFlags {
   // Enhanced error recovery with local error reporting
   enhancedErrorRecovery: boolean;

@@ -87,7 +87,8 @@ export default function Contact() {
                   <h4 className="text-white font-semibold mb-1">Email</h4>
                   <p className="text-gray-300">contact@nexariza.com</p>
                   <p className="text-gray-400 text-sm">admin@nexariza.com</p>
-                  <p className="text-cyan-400 text-sm">usman.aamer@ucp.edu.pk (Supervisor)</p>
+                  <p className="text-cyan-400 text-sm">usman.aamer@ucp.edu.pk (Supervisor · Phases 1-2)</p>
+                  <p className="text-cyan-400 text-sm">yasin.nasir@ucp.edu.pk (Supervisor · Phases 3-4)</p>
                 </div>
               </motion.div>
 

@@ -1,90 +1,256 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# Detectra AI — Unified Docker Compose
-# Frontend: ./detectra-ai-main   (React + Vite → Nginx static)
-# Backend:  api_server.py        (FastAPI + full AI pipeline)
-# Proxy:    nginx                (production profile only)
+# Detectra AI — Docker Compose (production-ready)
 #
-# ── Quick start ────────────────────────────────────────────────────────────────
-#   API only (dev):         docker compose up api
-#   Full stack (dev):       docker compose up api frontend
-#   Production (with nginx):docker compose --profile production up -d
+# Quick start:
+#   cp .env.example .env && edit secrets
+#   docker compose up -d --build              # API :8000 + UI :3000
+#   docker compose --profile production up -d # + Nginx gateway :80
+#
+# GPU (NVIDIA): docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# Full stack (Postgres + Celery backend): add --profile fullstack
 # ═══════════════════════════════════════════════════════════════════════════════
+
+name: detectra
+
+# Production UI: detectra-ai/detectra-ai-main  |  API: api_server.py (root)
+# Start:  docker compose up -d --build api frontend
+# Gateway: docker compose --profile production up -d --build api frontend nginx
+
+x-common-labels: &common-labels
+  com.detectra.project: "detectra-ai-fyp"
+  com.detectra.maintainer: "UCP-FOIT-BSAI"
 
 services:
 
-  # ─── FastAPI Backend + AI Pipeline ───────────────────────────────────────────
+  # ─── ML API (api_server.py — powers the React analyzer UI) ───────────────────
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: detectra-api:v4
+    image: detectra-api:${DETECTRA_IMAGE_TAG:-latest}
     container_name: detectra_api
     restart: unless-stopped
-    env_file: .env
+    labels:
+      <<: *common-labels
+      com.detectra.service: "ml-api"
+      com.detectra.description: "Multimodal video analysis API (FastAPI)"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    # Inline entrypoint avoids Windows CRLF issues in copied shell scripts
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p "$${UPLOAD_DIR:-/app/uploads}" /app/analysis_output
+        exec python -u api_server.py
+    env_file:
+      - path: .env
+        required: false
     environment:
-      API_HOST:   "0.0.0.0"
-      API_PORT:   "8000"
-      UPLOAD_DIR: "/app/uploads"
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      UPLOAD_DIR: /app/uploads
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+      HF_TOKEN: ${HF_TOKEN:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-${VITE_SUPABASE_ANON_KEY:-}}
+      SUPABASE_STORAGE_BUCKET: ${SUPABASE_STORAGE_BUCKET:-videos}
+      WARMUP_MODELS: ${WARMUP_MODELS:-0}
     volumes:
-      - ./uploads:/app/uploads
-      - ./analysis_output:/app/analysis_output
-      - ./yolov8s-seg.pt:/app/yolov8s-seg.pt:ro
-      - ./yolov8n-pose.pt:/app/yolov8n-pose.pt:ro
-      - model_cache:/root/.cache   # HuggingFace + torch cache
+      - api_uploads:/app/uploads
+      - api_output:/app/analysis_output
+      - model_cache:/root/.cache
     ports:
       - "${API_PORT:-8000}:8000"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 15s
       retries: 3
-      start_period: 90s   # allow time for model loading
+      start_period: 120s
 
-  # ─── React + Vite Frontend (Nginx static) ────────────────────────────────────
+  # ─── React UI: detectra-ai/detectra-ai-main (Vite build + Nginx) ───────────
   frontend:
     build:
       context: ./detectra-ai-main
       dockerfile: Dockerfile
       args:
-        # Supabase credentials are baked into the Vite bundle at build time
-        VITE_SUPABASE_URL:      "${VITE_SUPABASE_URL}"
-        VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
-        VITE_HF_TOKEN:          "${VITE_HF_TOKEN:-}"
-    image: detectra-frontend:v4
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+        VITE_SUPABASE_STORAGE_BUCKET: ${VITE_SUPABASE_STORAGE_BUCKET:-videos}
+        # Empty = same-origin (/api via frontend nginx or production gateway)
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_HF_TOKEN: ${VITE_HF_TOKEN:-}
+    image: detectra-frontend:${DETECTRA_IMAGE_TAG:-latest}
     container_name: detectra_frontend
     restart: unless-stopped
+    labels:
+      <<: *common-labels
+      com.detectra.service: "web-ui"
+      com.detectra.description: "React SPA from detectra-ai-main (Vite + Nginx)"
+      com.detectra.source: "detectra-ai-main"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost/ping || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
-  # ─── Nginx Reverse Proxy (production only) ────────────────────────────────────
-  # Start with:  docker compose --profile production up -d
-  # Routes all traffic through port 80:
-  #   /api, /health, /ws  →  api:8000
-  #   everything else     →  frontend:80
+  # ─── Single-host gateway (recommended production entrypoint) ───────────────
   nginx:
-    image: nginx:1.25-alpine
-    container_name: detectra_nginx
+    image: nginx:1.27-alpine
+    container_name: detectra_gateway
     restart: unless-stopped
+    labels:
+      <<: *common-labels
+      com.detectra.service: "gateway"
+      com.detectra.description: "Production reverse proxy (:80)"
     ports:
       - "${HTTP_PORT:-80}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - nginx_logs:/var/log/nginx
     depends_on:
-      - api
-      - frontend
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     profiles:
       - production
 
+  # ═══ Optional: enterprise backend (Postgres + Celery) — NOT used by default UI
+  postgres:
+    image: postgres:15-alpine
+    container_name: detectra_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-detectra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-detectra_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-detectra_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-detectra} -d ${POSTGRES_DB:-detectra_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - fullstack
+
+  redis:
+    image: redis:7-alpine
+    container_name: detectra_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - fullstack
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: detectra-backend:${DETECTRA_IMAGE_TAG:-latest}
+    container_name: detectra_backend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ENVIRONMENT: production
+      DEBUG: "false"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_models:/app/models
+      - backend_temp:/app/temp
+      - model_cache:/root/.cache
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+    profiles:
+      - fullstack
+
+  celery_worker:
+    image: detectra-backend:${DETECTRA_IMAGE_TAG:-latest}
+    container_name: detectra_celery
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ENVIRONMENT: production
+      DEBUG: "false"
+    volumes:
+      - backend_uploads:/app/uploads
+      - backend_models:/app/models
+      - backend_temp:/app/temp
+      - model_cache:/root/.cache
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      backend:
+        condition: service_healthy
+    profiles:
+      - fullstack
+
+networks:
+  default:
+    name: detectra_net
+
 volumes:
+  api_uploads:
+    name: detectra_api_uploads
+  api_output:
+    name: detectra_api_output
   model_cache:
+    name: detectra_model_cache
   nginx_logs:
+    name: detectra_nginx_logs
+  postgres_data:
+  redis_data:
+  backend_uploads:
+  backend_models:
+  backend_temp:

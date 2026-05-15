@@ -3,6 +3,7 @@ import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { TrendingUp, DollarSign, Users, Shield, Zap, Target, BarChart3, Globe } from 'lucide-react';
+import PageHero from '../components/PageHero';
 
 export default function BusinessCase() {
   const ref = useRef(null);
@@ -98,27 +99,16 @@ export default function BusinessCase() {
   ];
 
   return (
-    <div className="pt-20">
-      {/* Hero Section */}
-      <section className="py-20 sm:py-32 bg-gradient-to-b from-gray-950 to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_var(--tw-gradient-stops))] from-cyan-500/5 via-transparent to-transparent" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-              Business <span className="bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">Case</span>
-            </h1>
-            <p className="text-gray-300 text-xl max-w-3xl mx-auto">
-              Comprehensive business case for Detectra AI investment and market opportunity
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Market opportunity"
+        badgeIcon={TrendingUp}
+        title="Business"
+        titleAccent="Case"
+        description="Comprehensive business case for Detectra AI investment and market opportunity."
+      >
+        <div className="w-full max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {marketOpportunity.map((item, index) => (
               <motion.div
                 key={item.title}
@@ -148,7 +138,7 @@ export default function BusinessCase() {
             ))}
           </div>
         </div>
-      </section>
+      </PageHero>
 
       {/* Target Markets Section */}
       <section className="py-20 sm:py-32 bg-white/5 backdrop-blur-md relative overflow-hidden">

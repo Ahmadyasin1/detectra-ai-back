@@ -3,8 +3,6 @@ Integration tests for Videos, Analysis, and Results APIs.
 All tests use the in-memory SQLite DB from conftest.py.
 """
 import io
-import pytest
-
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
 

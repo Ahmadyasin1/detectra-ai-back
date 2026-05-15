@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 import type { AnalysisResult } from './detectraApi';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -34,7 +34,14 @@ export function videoUrlToJobId(videoUrl: string): string | null {
   return videoUrl.slice('detectra-job://'.length) || null;
 }
 
-function logSupabaseError(fn: string, error: { message: string; code?: string; hint?: string; details?: string }) {
+interface SupabaseLikeError {
+  message: string;
+  code?: string;
+  hint?: string;
+  details?: string;
+}
+
+function logSupabaseError(fn: string, error: SupabaseLikeError): void {
   console.error(`[supabaseDb] ${fn} error:`, {
     message: error.message,
     code: error.code ?? 'n/a',
@@ -43,11 +50,19 @@ function logSupabaseError(fn: string, error: { message: string; code?: string; h
   });
 }
 
-async function requireSession(): Promise<string> {
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error) throw new Error(`Auth error: ${error.message}`);
-  if (!session?.access_token) throw new Error('Not authenticated — please sign in again');
-  return session.access_token;
+/** Resolve to current access token, or null if no session / Supabase disabled. */
+async function maybeSession(): Promise<{ token: string | null; userId: string | null }> {
+  if (!isSupabaseConfigured) return { token: null, userId: null };
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data?.session?.access_token) return { token: null, userId: null };
+    return {
+      token: data.session.access_token,
+      userId: data.session.user?.id ?? null,
+    };
+  } catch {
+    return { token: null, userId: null };
+  }
 }
 
 // ─── video_uploads ────────────────────────────────────────────────────────────
@@ -56,9 +71,14 @@ export async function createVideoUpload(
   userId: string,
   jobId: string,
   title: string,
-): Promise<VideoUpload> {
-  // Verify active session before attempting insert (avoids silent RLS failures)
-  await requireSession();
+): Promise<VideoUpload | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const { token } = await maybeSession();
+  if (!token) {
+    console.warn('[supabaseDb] createVideoUpload skipped — no session');
+    return null;
+  }
 
   const { data, error } = await supabase
     .from('video_uploads')
@@ -75,14 +95,7 @@ export async function createVideoUpload(
 
   if (error) {
     logSupabaseError('createVideoUpload', error);
-    const hint = error.code === '42501'
-      ? ' (RLS policy violation — run the migration SQL in Supabase Dashboard)'
-      : error.code === '23503'
-        ? ' (foreign key violation — user may not be fully confirmed)'
-        : error.code === '42P01'
-          ? ' (table missing — run migration SQL in Supabase Dashboard)'
-          : '';
-    throw new Error(`Failed to save job to database: ${error.message}${hint} [${error.code ?? 'unknown'}]`);
+    return null;
   }
   return data as VideoUpload;
 }
@@ -92,18 +105,20 @@ export async function updateVideoUpload(
   jobId: string,
   update: Partial<Pick<VideoUpload, 'status' | 'analysis_results' | 'title' | 'description'>>,
 ): Promise<void> {
+  if (!isSupabaseConfigured) return;
+
   const { error } = await supabase
     .from('video_uploads')
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('video_url', jobIdToVideoUrl(jobId));
 
-  if (error) {
-    logSupabaseError('updateVideoUpload', error);
-  }
+  if (error) logSupabaseError('updateVideoUpload', error);
 }
 
 export async function getUserVideoUploads(userId: string): Promise<VideoUpload[]> {
+  if (!isSupabaseConfigured) return [];
+
   const { data, error } = await supabase
     .from('video_uploads')
     .select('*')
@@ -121,6 +136,8 @@ export async function getVideoUploadByJobId(
   userId: string,
   jobId: string,
 ): Promise<VideoUpload | null> {
+  if (!isSupabaseConfigured) return null;
+
   const { data, error } = await supabase
     .from('video_uploads')
     .select('*')
@@ -129,24 +146,58 @@ export async function getVideoUploadByJobId(
     .single();
 
   if (error) {
-    if (error.code !== 'PGRST116') {
-      logSupabaseError('getVideoUploadByJobId', error);
-    }
+    if (error.code !== 'PGRST116') logSupabaseError('getVideoUploadByJobId', error);
     return null;
   }
   return data as VideoUpload;
 }
 
+const STORAGE_BUCKET = (import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined) || 'videos';
+
+export async function uploadVideoFileToBucket(
+  file: File,
+  bucketName: string = STORAGE_BUCKET,
+): Promise<{ storagePath: string; publicUrl: string | null; error: string | null }> {
+  if (!isSupabaseConfigured) {
+    return { storagePath: '', publicUrl: null, error: 'guest_mode' };
+  }
+
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `uploads/${uuid}-${sanitizedFileName}`;
+
+  const { error } = await supabase.storage.from(bucketName).upload(storagePath, file, {
+    upsert: false,
+    cacheControl: '3600',
+  });
+
+  if (error) {
+    logSupabaseError('uploadVideoFileToBucket', error);
+    return { storagePath, publicUrl: null, error: error.message };
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(storagePath);
+
+  return {
+    storagePath,
+    publicUrl: publicUrlData?.publicUrl ?? null,
+    error: null,
+  };
+}
+
 export async function deleteVideoUpload(userId: string, jobId: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+
   const { error } = await supabase
     .from('video_uploads')
     .delete()
     .eq('user_id', userId)
     .eq('video_url', jobIdToVideoUrl(jobId));
 
-  if (error) {
-    logSupabaseError('deleteVideoUpload', error);
-  }
+  if (error) logSupabaseError('deleteVideoUpload', error);
 }
 
 // ─── contact_submissions ──────────────────────────────────────────────────────
@@ -154,13 +205,16 @@ export async function deleteVideoUpload(userId: string, jobId: string): Promise<
 export async function submitContactForm(
   submission: Omit<ContactSubmission, 'id' | 'created_at'>,
 ): Promise<{ error: string | null }> {
-  const { error } = await supabase
-    .from('contact_submissions')
-    .insert({
-      name: submission.name,
-      email: submission.email,
-      message: submission.message,
-    });
+  if (!isSupabaseConfigured) {
+    console.warn('[supabaseDb] submitContactForm — Supabase disabled, submission discarded');
+    return { error: 'guest_mode' };
+  }
+
+  const { error } = await supabase.from('contact_submissions').insert({
+    name: submission.name,
+    email: submission.email,
+    message: submission.message,
+  });
 
   if (error) {
     logSupabaseError('submitContactForm', error);
@@ -170,25 +224,28 @@ export async function submitContactForm(
 }
 
 // ─── demo_analytics ───────────────────────────────────────────────────────────
-// DB schema: { event text, properties jsonb, user_id uuid }
 
 export async function trackDemoAnalytic(
   userId: string | null,
-  _sessionId: string,
+  sessionId: string,
   demoType: string,
   actionType: string,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('demo_analytics')
-    .insert({
-      event: `${demoType}.${actionType}`,
-      properties: { session_id: _sessionId, demo_type: demoType, action_type: actionType, ...metadata },
-      user_id: userId,
-    });
+  if (!isSupabaseConfigured) return;
+
+  const { error } = await supabase.from('demo_analytics').insert({
+    event: `${demoType}.${actionType}`,
+    properties: {
+      session_id: sessionId,
+      demo_type: demoType,
+      action_type: actionType,
+      ...metadata,
+    },
+    user_id: userId,
+  });
 
   if (error) {
-    // Non-fatal analytics failure — log but don't throw
     logSupabaseError('trackDemoAnalytic', error);
   }
 }

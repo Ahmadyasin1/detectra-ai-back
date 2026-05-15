@@ -248,6 +248,17 @@
             </table>
           </div>
         </div>
+
+        <!-- Primary UX: use the Vite app (Results page) for translation + RAG chat -->
+        <div class="p-6 glass rounded-2xl border border-slate-800/80">
+          <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Full intelligence workspace
+          </h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Transcript translation and the RAG investigator run in the production web app on the <strong class="text-slate-300">Analyze → Results</strong> screen (Speech tab + Ask AI tab), backed by the same API as <code class="mono text-emerald-400/90">/api/jobs/{id}/translate</code> and <code class="mono text-emerald-400/90">/api/jobs/{id}/ask</code>.
+            This standalone dashboard stays focused on metrics, charts, and the evidence ledger.
+          </p>
+        </div>
       </div>
 
       <!-- Footer Action Header -->
@@ -261,7 +272,7 @@
             <i data-lucide="file-text" class="w-4 h-4"></i> EXPORT REPORT
           </button>
           <button onclick="downloadVideo()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all shadow-xl shadow-emerald-500/20">
-            <i data-lucide="download" class="w-4 h-4"></i> RETRIEVE FOOAGE
+            <i data-lucide="download" class="w-4 h-4"></i> RETRIEVE FOOTAGE
           </button>
         </div>
       </div>
@@ -329,6 +340,7 @@
   let charts = { density: null, anomaly: null };
   let procStart = null;
   let procInterval = null;
+  let currentResult = null;
 
   // -- UTILS --
   const $ = (id) => document.getElementById(id);
@@ -529,6 +541,7 @@
   }
 
   function renderJobData(r, s) {
+    currentResult = r;
     $('m-persons').textContent = (r.unique_track_ids || []).length.toString().padStart(2, '0');
     $('m-events').textContent = (r.surveillance_events || []).length.toString().padStart(2, '0');
     $('m-speech').textContent = (r.speech_segments || []).filter(v => !v.is_noise).length.toString().padStart(2, '0');
@@ -544,8 +557,11 @@
     $('h-job-meta').textContent = `${dur}s Footage // ${r.height}p @ ${Math.round(r.fps)}fps // ${r.surveillance_events.length} Surveillance Hits`;
     $('job-header-overlay').classList.remove('hidden');
 
-    // Charts
-    initDensityChart(r.frame_results || []);
+    // Charts (API returns sampled frame_analytics; legacy frame_results stripped)
+    const densityFrames = (r.frame_analytics && r.frame_analytics.length)
+      ? r.frame_analytics.map(p => ({ timestamp_s: p.t, person_count: p.person_count }))
+      : (r.frame_results || []);
+    initDensityChart(densityFrames);
     initAnomalyChart(r.fusion_insights || []);
 
     // Ledger

@@ -1,13 +1,17 @@
 import math
-import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.exceptions import ForbiddenException, NotFoundException, UnsupportedVideoFormatException, VideoTooLargeException
+from app.core.exceptions import (
+    ForbiddenException,
+    NotFoundException,
+    UnsupportedVideoFormatException,
+    VideoTooLargeException,
+)
 from app.db.models.user import User
 from app.db.models.video import Video, VideoStatus
 from app.db.session import get_db

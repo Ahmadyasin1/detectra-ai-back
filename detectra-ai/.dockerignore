@@ -34,5 +34,6 @@ notebooks/
 
 # ── Logs / temp ───────────────────────────────────────────────────────────────
 *.log
-*.txt
 *.db
+# Keep API requirements for Docker build
+!requirements.api.txt

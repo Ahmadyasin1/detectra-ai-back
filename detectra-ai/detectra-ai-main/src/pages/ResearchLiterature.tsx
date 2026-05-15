@@ -1,6 +1,6 @@
-import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { motion } from 'framer-motion';
 import { BookOpen, ExternalLink, Award, Cpu, Mic, Eye, Brain, Volume2, Users2 } from 'lucide-react';
+import PageHero from '../components/PageHero';
 
 interface Paper {
   id:          number;
@@ -127,34 +127,17 @@ const IMPACT_LEVELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ResearchLiterature() {
-  const headerRef = useRef(null);
-  const headerIn  = useInView(headerRef, { once: true, margin: '-80px' });
-
   return (
-    <div className="pt-20 min-h-screen bg-transparent">
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Research Foundation · 8 Key Papers"
+        badgeIcon={BookOpen}
+        title="Literature"
+        titleAccent="Review"
+        description="The academic papers that directly underpin every AI module in Detectra AI — from detection backbone to cross-modal fusion engine."
+      />
 
-      {/* Header */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-gray-900 to-gray-950 relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-dark opacity-40" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,_var(--tw-gradient-stops))] from-indigo-500/8 via-transparent to-transparent" />
-
-        <div ref={headerRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={headerIn ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.55 }}>
-            <span className="badge-blue mb-5 inline-flex">
-              <BookOpen className="w-3.5 h-3.5" />
-              Research Foundation · 8 Key Papers
-            </span>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5">
-              Literature <span className="text-gradient-cyan">Review</span>
-            </h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              The academic papers that directly underpin every AI module in Detectra AI — from detection backbone to cross-modal fusion engine.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Papers grid */}
+      {/* Papers grid */}      {/* Papers grid */}
       <section className="py-12 sm:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

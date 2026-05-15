@@ -39,6 +39,8 @@ import threading
 import time
 import traceback
 import uuid
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -104,6 +106,246 @@ ALLOWED_ORIGINS: list[str] = ["*"] if _raw_origins.strip() == "*" else [
 ]
 
 ALLOWED_EXTS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".m4v"}
+HF_TOKEN = os.getenv("HF_TOKEN", os.getenv("VITE_HF_TOKEN", ""))
+HF_CHAT_MODEL = os.getenv("HF_CHAT_MODEL", "mistralai/Mistral-7B-Instruct-v0.2")
+HF_TRANSLATE_MODEL = os.getenv("HF_TRANSLATE_MODEL", "facebook/nllb-200-distilled-600M")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", os.getenv("VITE_SUPABASE_URL", "")).rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", os.getenv("VITE_SUPABASE_ANON_KEY", ""))
+SUPABASE_STORAGE_BUCKET = os.getenv(
+    "SUPABASE_STORAGE_BUCKET",
+    os.getenv("VITE_SUPABASE_STORAGE_BUCKET", "videos"),
+)
+
+LANGUAGE_CODES = {
+    "english": "en", "urdu": "ur", "arabic": "ar", "french": "fr", "german": "de",
+    "spanish": "es", "chinese": "zh", "hindi": "hi", "turkish": "tr", "russian": "ru",
+    "italian": "it", "portuguese": "pt", "japanese": "ja", "korean": "ko", "bengali": "bn",
+}
+
+
+def _normalize_lang_code(lang: str) -> str:
+    raw = (lang or "").strip().lower()
+    if not raw:
+        return "en"
+    if raw in LANGUAGE_CODES:
+        return LANGUAGE_CODES[raw]
+    if "-" in raw:
+        return raw.split("-", 1)[0]
+    return raw
+
+
+def _supabase_enabled() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+
+def _supabase_rest_request(method: str, path: str, body: Any | None = None, query: str = "", extra_headers: dict | None = None) -> str | None:
+    if not _supabase_enabled():
+        raise RuntimeError("Supabase service role is not configured")
+
+    url = f"{SUPABASE_URL}/rest/v1/{path}"
+    if query:
+        url = f"{url}?{query}"
+    headers = {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+
+    payload = None
+    if body is not None:
+        payload = json.dumps(body, default=str).encode("utf-8")
+
+    req = urllib_request.Request(url=url, data=payload, headers=headers, method=method)
+    try:
+        with urllib_request.urlopen(req, timeout=60) as resp:
+            return resp.read().decode("utf-8")
+    except urllib_error.HTTPError as exc:
+        resp_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Supabase REST {method} {url} failed: {exc.code} {exc.reason}: {resp_body[:1000]}")
+
+
+def _sync_supabase_upsert_video_upload(job: "AnalysisJob") -> None:
+    if not _supabase_enabled() or not job.user_id or job.user_id == "anonymous":
+        return
+
+    try:
+        payload = {
+            "user_id": job.user_id,
+            "video_url": f"detectra-job://{job.job_id}",
+            "title": job.video_name or "Untitled Analysis",
+            "status": str(job.status.value if hasattr(job.status, 'value') else job.status),
+            "analysis_results": job.result,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        _supabase_rest_request(
+            "POST",
+            "video_uploads",
+            body=payload,
+            query="on_conflict=video_url",
+            extra_headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
+        )
+    except Exception as exc:
+        print(f"  [Supabase] Failed to sync video_uploads row for job {job.job_id}: {exc}")
+
+
+def _download_url_to_path(url: str, dest_path: Path, headers: dict[str, str] | None = None) -> None:
+    headers = headers or {}
+    req = urllib_request.Request(url=url, headers=headers, method="GET")
+    try:
+        with urllib_request.urlopen(req, timeout=120) as resp:
+            with open(dest_path, "wb") as out_file:
+                while True:
+                    chunk = resp.read(64 * 1024)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+    except urllib_error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(502, f"Video download failed: {detail[:300]}")
+    except Exception as exc:
+        raise HTTPException(502, f"Video download failed: {exc}")
+
+
+def _post_hf_text_generation(model_id: str, prompt: str, max_new_tokens: int = 256) -> str:
+    if not HF_TOKEN:
+        raise HTTPException(503, "HF_TOKEN is not configured for AI generation/translation")
+    url = f"https://api-inference.huggingface.co/models/{model_id}"
+    payload = json.dumps(
+        {
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": max_new_tokens,
+                "temperature": 0.2,
+                "top_p": 0.9,
+                "do_sample": True,
+                "return_full_text": False,
+            },
+            "options": {"wait_for_model": True, "use_cache": False},
+        }
+    ).encode("utf-8")
+    req = urllib_request.Request(
+        url=url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {HF_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=120) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(body)
+    except urllib_error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(502, f"HuggingFace API error: {detail[:300]}")
+    except Exception as exc:
+        raise HTTPException(502, f"HuggingFace request failed: {exc}")
+
+    if isinstance(data, list) and data:
+        txt = data[0].get("generated_text", "")
+        return str(txt).strip()
+    if isinstance(data, dict):
+        txt = data.get("generated_text") or data.get("summary_text") or data.get("translation_text")
+        if txt:
+            return str(txt).strip()
+        if data.get("error"):
+            raise HTTPException(502, f"HuggingFace error: {data['error']}")
+    raise HTTPException(502, "Unexpected HuggingFace response format")
+
+
+def _post_gemini_text_generation(model_id: str, prompt: str, max_new_tokens: int = 256) -> str:
+    if not GEMINI_API_KEY:
+        raise HTTPException(503, "GEMINI_API_KEY is not configured for RAG chatbot generation")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta2/models/{model_id}:generate?key={GEMINI_API_KEY}"
+    payload = json.dumps({
+        "prompt": {"text": prompt},
+        "temperature": 0.2,
+        "maxOutputTokens": max_new_tokens,
+        "topP": 0.9,
+        "topK": 40,
+    }).encode("utf-8")
+
+    req = urllib_request.Request(
+        url=url,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=120) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(body)
+    except urllib_error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(502, f"Gemini API error: {detail[:300]}")
+    except Exception as exc:
+        raise HTTPException(502, f"Gemini request failed: {exc}")
+
+    if isinstance(data, dict):
+        if "candidates" in data and isinstance(data["candidates"], list) and data["candidates"]:
+            first = data["candidates"][0]
+            output = first.get("output")
+            if output:
+                return str(output).strip()
+            content = first.get("content")
+            if isinstance(content, list):
+                text = "".join(str(item.get("text", "")) for item in content if isinstance(item, dict))
+                if text:
+                    return text.strip()
+        if data.get("error"):
+            raise HTTPException(502, f"Gemini error: {data['error']}")
+    raise HTTPException(502, "Unexpected Gemini response format")
+
+
+def _generate_rag_answer(model_id: str, prompt: str, max_new_tokens: int = 256) -> str:
+    if GEMINI_API_KEY and model_id.startswith("gemini"):
+        return _post_gemini_text_generation(model_id, prompt, max_new_tokens)
+    return _post_hf_text_generation(model_id, prompt, max_new_tokens)
+
+
+def _distinct_person_count(d: dict[str, Any]) -> int:
+    """Prefer graph-based distinct_individuals; fall back to raw ByteTrack ID count."""
+    n = d.get("distinct_individuals")
+    if isinstance(n, int) and n >= 0:
+        return n
+    return len(d.get("unique_track_ids") or [])
+
+
+def _build_rag_context(result: dict[str, Any], rag_payload: dict[str, Any]) -> str:
+    risk = result.get("risk_level", "UNKNOWN")
+    persons = _distinct_person_count(result)
+    events = result.get("surveillance_events", [])
+    top_objects = result.get("top_objects", [])
+    transcript = result.get("full_transcript", "")
+    top_obj_text = ", ".join(f"{o.get('label')}({o.get('count')})" for o in top_objects[:10]) or "None"
+    event_lines = []
+    for e in events[:25]:
+        event_lines.append(
+            f"- t={float(e.get('timestamp_s', 0)):.1f}s | {e.get('severity','low')} | "
+            f"{e.get('event_type','event')}: {e.get('description','')}"
+        )
+    rag_narrative = rag_payload.get("narrative", "")
+    return (
+        "Detectra analysis context:\n"
+        f"Risk level: {risk}\n"
+        f"Distinct individuals (estimated): {persons}\n"
+        f"Top objects: {top_obj_text}\n"
+        f"Surveillance events ({len(events)}):\n" + ("\n".join(event_lines) if event_lines else "- none") + "\n"
+        f"Narrative: {rag_narrative}\n"
+        f"Transcript excerpt: {str(transcript)[:1800]}"
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -374,6 +616,24 @@ def _serialize_analysis(result, video_name: str | None = None) -> dict:
 
     d = fix(result)
 
+    # Lightweight per-frame telemetry for dashboards (before stripping frame_results)
+    frs = d.get("frame_results") or []
+    if frs:
+        n_frames = len(frs)
+        max_pts = 500
+        stride = max(1, (n_frames + max_pts - 1) // max_pts)
+        d["frame_analytics"] = [
+            {
+                "t": round(float(fr.get("timestamp_s", 0)), 3),
+                "person_count": int(fr.get("person_count", 0)),
+                "action": str(fr.get("dominant_action") or "")[:96],
+                "motion": round(float(fr.get("flow_magnitude", 0)), 4),
+            }
+            for fr in frs[::stride]
+        ][:max_pts]
+    else:
+        d["frame_analytics"] = []
+
     # Remove heavy / internal fields — keep response clean and portable
     d.pop("frame_results", None)
     d.pop("logo_detections", None)
@@ -435,7 +695,7 @@ def _serialize_analysis(result, video_name: str | None = None) -> dict:
 
     # ── Computed: narrative summary if empty ──────────────────────────────────
     if not d.get("summary"):
-        n_persons = len(d.get("unique_track_ids", []))
+        n_persons = _distinct_person_count(d)
         n_events  = len(events)
         risk      = d["risk_level"]
         mins, secs = int(dur // 60), int(dur % 60)
@@ -481,7 +741,12 @@ def _run_analysis_worker(job_id: str):
 
         def patched_analyze(video_path):
             from pathlib import Path as P
-            from analyze_videos import VideoAnalysis, USE_DENOISE, classify_audio
+            from analyze_videos import (
+                VideoAnalysis,
+                USE_DENOISE,
+                align_audio_events_with_speech,
+                classify_audio,
+            )
             import cv2
 
             progress(9.0, "reading_video")
@@ -525,6 +790,9 @@ def _run_analysis_worker(job_id: str):
                 # must copy it here or _compute_stats loses all language detection data.
                 analysis.detected_languages = analyzer._last_detected_languages
                 analysis.audio_events       = classify_audio(str(audio_path), dur)
+                analysis.audio_events       = align_audio_events_with_speech(
+                    analysis.audio_events, analysis.speech_segments
+                )
                 audio_path.unlink(missing_ok=True)
                 (OUTPUT_DIR_API / f"_tmp_{P(video_path).stem}.wav").unlink(missing_ok=True)
 
@@ -536,6 +804,12 @@ def _run_analysis_worker(job_id: str):
             progress(82.0, "surveillance")
             analysis.surveillance_events = analyzer._surv.analyze(
                 analysis.frame_results, analysis.audio_events)
+
+            # Must match CLI `DetectraAnalyzer.analyze()`: EMA smoothing, cross-modal
+            # dedup, speech pruning, and severity alignment — without this, API results
+            # diverge from standalone `python analyze_videos.py` runs.
+            progress(84.0, "postprocessing")
+            analyzer._validator.validate(analysis)
 
             progress(88.0, "writing_output")
             analyzer._compute_stats(analysis)
@@ -557,6 +831,7 @@ def _run_analysis_worker(job_id: str):
         job.progress     = 100.0
         job.stage        = "completed"
         _save_jobs()
+        _sync_supabase_upsert_video_upload(job)
 
         # Build summary for WebSocket notification
         surv_n = len(result.surveillance_events)
@@ -564,7 +839,7 @@ def _run_analysis_worker(job_id: str):
         _sync_broadcast(job_id, {
             "type": "completed", "job_id": job_id,
             "processing_s": round(job.processing_s, 1),
-            "persons": len(result.unique_track_ids),
+            "persons": result.distinct_individuals,
             "surveillance_events": surv_n,
             "report_url": f"/api/jobs/{job_id}/report",
             "video_url":  f"/api/jobs/{job_id}/video",
@@ -576,6 +851,8 @@ def _run_analysis_worker(job_id: str):
         job.completed_at = datetime.now(timezone.utc).isoformat()
         job.processing_s = time.perf_counter() - t0
         job.stage        = "failed"
+        _save_jobs()
+        _sync_supabase_upsert_video_upload(job)
         _sync_broadcast(job_id, {
             "type": "error", "job_id": job_id, "error": str(exc)
         })
@@ -683,6 +960,12 @@ async def start_analysis(
     _save_jobs()
     _ws_conns[job_id] = []
 
+    # Sync the initial job record to Supabase if available.
+    try:
+        _sync_supabase_upsert_video_upload(job)
+    except Exception as exc:
+        print(f"  [Supabase] Initial job sync failed: {exc}")
+
     # Start analysis in background thread
     thread = threading.Thread(target=_run_analysis_worker, args=(job_id,), daemon=True)
     thread.start()
@@ -693,6 +976,105 @@ async def start_analysis(
         "video_name":  job.video_name,
         "user_id":     user_id,
         "size_mb":     round(mb, 2),
+        "ws_url":      f"/ws/{job_id}",
+        "status_url":  f"/api/jobs/{job_id}",
+        "result_url":  f"/api/jobs/{job_id}/result",
+    }, status_code=202)
+
+
+async def _download_from_supabase_storage(bucket: str, storage_path: str, dest_path: Path) -> None:
+    if not _supabase_enabled():
+        raise HTTPException(503, "Supabase is not configured on the backend (set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)")
+
+    bucket = bucket.strip().lstrip("/")
+    storage_path = storage_path.strip().lstrip("/")
+    if not bucket:
+        raise HTTPException(400, "Bucket name is required for Supabase storage download")
+    if not storage_path:
+        raise HTTPException(400, "storage_path is required for Supabase storage download")
+
+    url = f"{SUPABASE_URL}/storage/v1/object/{bucket}/{storage_path}"
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        # Supabase Storage requires the project apikey alongside the bearer token.
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    }
+    try:
+        _download_url_to_path(url, dest_path, headers)
+    except HTTPException as exc:
+        # Re-raise with a clearer, actionable message
+        detail = (exc.detail or "").lower()
+        if "bucket not found" in detail:
+            raise HTTPException(
+                404,
+                f"Storage bucket '{bucket}' does not exist in this Supabase project. "
+                f"Create it in Supabase Dashboard → Storage, or update SUPABASE_STORAGE_BUCKET.",
+            ) from exc
+        if "object not found" in detail or "not found" in detail:
+            raise HTTPException(
+                404,
+                f"File '{storage_path}' not found in bucket '{bucket}'. "
+                f"Did the upload from the frontend succeed?",
+            ) from exc
+        raise
+
+
+@app.post("/api/analyze/url")
+async def start_analysis_from_url(
+    payload: dict[str, Any],
+    current_user: dict | None = Depends(get_optional_user),
+):
+    """Start analysis from an external or Supabase bucket URL."""
+    video_name = payload.get("video_name") or "upload.mp4"
+    public_url = payload.get("public_url")
+    storage_path = payload.get("storage_path")
+    bucket = payload.get("bucket") or SUPABASE_STORAGE_BUCKET
+
+    if not public_url and not storage_path:
+        raise HTTPException(400, "public_url or storage_path is required")
+
+    ext = Path(video_name).suffix.lower() or ".mp4"
+    if ext not in ALLOWED_EXTS:
+        raise HTTPException(400, f"Unsupported format '{ext}'. Allowed: {ALLOWED_EXTS}")
+
+    job_id = str(uuid.uuid4())[:8]
+    save_path = UPLOAD_DIR / f"{job_id}{ext}"
+    user_id = (current_user or {}).get("sub", "anonymous")
+
+    try:
+        if storage_path:
+            await _download_from_supabase_storage(bucket, storage_path, save_path)
+        else:
+            _download_url_to_path(public_url, save_path)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Video download failed: {exc}")
+
+    job = AnalysisJob(
+        job_id=job_id,
+        video_name=video_name,
+        video_path=str(save_path),
+        user_id=user_id,
+    )
+    _jobs[job_id] = job
+    _save_jobs()
+    _ws_conns[job_id] = []
+
+    try:
+        _sync_supabase_upsert_video_upload(job)
+    except Exception as exc:
+        print(f"  [Supabase] Initial job sync failed: {exc}")
+
+    thread = threading.Thread(target=_run_analysis_worker, args=(job_id,), daemon=True)
+    thread.start()
+
+    return JSONResponse({
+        "job_id":      job_id,
+        "status":      JobStatus.PENDING,
+        "video_name":  job.video_name,
+        "user_id":     user_id,
+        "size_mb":     0,
         "ws_url":      f"/ws/{job_id}",
         "status_url":  f"/api/jobs/{job_id}",
         "result_url":  f"/api/jobs/{job_id}/result",
@@ -743,6 +1125,100 @@ async def job_rag_json(job_id: str, current_user: dict | None = Depends(get_opti
     if not rag_path.exists():
         raise HTTPException(404, "RAG JSON not found — re-run analysis")
     return FileResponse(str(rag_path), media_type="application/json", filename=rag_path.name)
+
+
+@app.get("/api/jobs/{job_id}/translate")
+async def job_translate(
+    job_id: str,
+    target_lang: str = "en",
+    current_user: dict | None = Depends(get_optional_user),
+):
+    """
+    Translate the transcript into a requested language.
+    Uses HuggingFace text generation if HF_TOKEN is configured.
+    """
+    job = _require_job_access(job_id, current_user)
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(409, "Job not completed yet")
+    result = job.result or {}
+    transcript = str(result.get("full_transcript", "")).strip()
+    if not transcript:
+        return {
+            "job_id": job_id,
+            "target_lang": _normalize_lang_code(target_lang),
+            "translated_text": "",
+            "message": "No transcript available to translate.",
+        }
+
+    normalized_target = _normalize_lang_code(target_lang)
+    prompt = (
+        f"Translate the following transcript to language code '{normalized_target}'. "
+        "Preserve timestamps and keep meaning precise for surveillance context.\n\n"
+        f"{transcript}"
+    )
+    translated = _post_hf_text_generation(HF_TRANSLATE_MODEL, prompt, max_new_tokens=700)
+    return {
+        "job_id": job_id,
+        "target_lang": normalized_target,
+        "translated_text": translated,
+    }
+
+
+@app.post("/api/jobs/{job_id}/ask")
+async def job_ask(
+    job_id: str,
+    payload: dict[str, Any],
+    current_user: dict | None = Depends(get_optional_user),
+):
+    """
+    RAG-style Q&A endpoint for analyzer dashboard.
+    Falls back to deterministic answers for common operational questions.
+    """
+    job = _require_job_access(job_id, current_user)
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(409, "Job not completed yet")
+    question = str(payload.get("question", "")).strip()
+    if not question:
+        raise HTTPException(400, "Question is required")
+    result = job.result or {}
+    ql = question.lower()
+
+    # Deterministic fast-path for operational questions.
+    if "how many person" in ql or "how many people" in ql or "person count" in ql:
+        return {
+            "answer": (
+                f"Estimated { _distinct_person_count(result) } distinct individual(s) "
+                f"(ByteTrack may assign multiple ID segments per person). "
+                f"Peak concurrent persons in any frame: {result.get('max_concurrent_persons', 0)}."
+            )
+        }
+    if "theft" in ql or "steal" in ql or "robbery" in ql:
+        theft_events = [
+            e for e in (result.get("surveillance_events") or [])
+            if any(k in str(e.get("event_type", "")).lower() for k in ("theft", "steal", "robbery"))
+        ]
+        if theft_events:
+            return {"answer": f"Potential theft-related events detected: {len(theft_events)}."}
+        return {"answer": "No explicit theft/robbery event was detected by current surveillance rules."}
+
+    # Build RAG context from saved JSON + current result.
+    from analyze_videos import OUTPUT_DIR
+    stem = Path(job.video_path).stem
+    rag_path = OUTPUT_DIR / f"{stem}_rag.json"
+    rag_payload: dict[str, Any] = {}
+    if rag_path.exists():
+        try:
+            rag_payload = json.loads(rag_path.read_text(encoding="utf-8"))
+        except Exception:
+            rag_payload = {}
+    context = _build_rag_context(result, rag_payload)
+    prompt = (
+        "You are Detectra AI assistant. Answer based ONLY on the provided analysis context. "
+        "Be concise, factual, and professional. If uncertain, state it clearly.\n\n"
+        f"{context}\n\nQuestion: {question}\nAnswer:"
+    )
+    answer = _generate_rag_answer(GEMINI_MODEL if GEMINI_API_KEY else HF_CHAT_MODEL, prompt, max_new_tokens=300)
+    return {"answer": answer}
 
 
 @app.get("/api/jobs/{job_id}/report")

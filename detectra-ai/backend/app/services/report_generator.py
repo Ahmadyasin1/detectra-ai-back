@@ -51,9 +51,6 @@ class ReportGenerator:
         results: dict[str, list[Result]],
     ) -> str:
         fused = results.get("fused", [])
-        objects = results.get("object", [])
-        logos = results.get("logo", [])
-        motions = results.get("motion", [])
         speech = results.get("speech", [])
         audio = results.get("audio", [])
 

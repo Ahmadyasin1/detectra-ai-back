@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.video_uploads (
 CREATE INDEX IF NOT EXISTS video_uploads_user_id_idx ON public.video_uploads(user_id);
 CREATE INDEX IF NOT EXISTS video_uploads_status_idx  ON public.video_uploads(status);
 CREATE INDEX IF NOT EXISTS video_uploads_created_idx ON public.video_uploads(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS video_uploads_video_url_key ON public.video_uploads(video_url);
 
 ALTER TABLE public.video_uploads ENABLE ROW LEVEL SECURITY;
 

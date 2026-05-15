@@ -23,6 +23,10 @@ backend/models/whisper/
 # Uploads & temp
 backend/uploads/
 backend/temp/
+uploads/
+analysis_output/
+*.mp4
+jobs_db.json
 
 # Node
 node_modules/

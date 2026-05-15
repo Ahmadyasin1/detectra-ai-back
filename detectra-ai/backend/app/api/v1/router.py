@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, videos, analysis, results, reports
+from app.api.v1 import analysis, auth, reports, results, videos
 
 api_router = APIRouter(prefix="/api/v1")
 

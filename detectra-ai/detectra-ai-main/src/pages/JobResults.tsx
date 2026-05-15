@@ -5,7 +5,7 @@ import {
   ArrowLeft, Shield, AlertTriangle, Mic, Volume2, Users, BarChart3,
   FileJson, Film, Download, ChevronDown, ChevronUp, Search,
   Clock, Activity, Brain, Eye, Zap, TrendingUp, CheckCircle,
-  PersonStanding, Sparkles, Target, FileText, Maximize2,
+  PersonStanding, Sparkles, Target, FileText, Maximize2, Layers,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -14,6 +14,9 @@ import {
   severityBadgeClass, severityHex,
   fmtSeconds, fmtDuration,
   getRagJsonUrl, getReportUrl, getVideoUrl,
+  getTranslatedTranscript,
+  distinctPersonCount, trackFragmentCount,
+  type FrameAnalyticsPoint,
 } from '../lib/detectraApi';
 import { useAuth } from '../contexts/AuthContext';
 import { getVideoUploadByJobId } from '../lib/supabaseDb';
@@ -79,9 +82,12 @@ function KeyFindings({ result }: { result: AnalysisResult }) {
     findings.push({ icon: AlertTriangle, color: 'text-red-400',
       text: `${criticals.length} critical event${criticals.length > 1 ? 's' : ''} detected: ${[...new Set(criticals.map(e => e.event_type.replace(/_/g, ' ')))].join(', ')}` });
 
-  if (result.unique_track_ids.length > 0)
+  if (distinctPersonCount(result) > 0)
     findings.push({ icon: PersonStanding, color: 'text-cyan-400',
-      text: `${result.unique_track_ids.length} unique person${result.unique_track_ids.length > 1 ? 's' : ''} tracked — max ${result.max_concurrent_persons} concurrent` });
+      text: `${distinctPersonCount(result)} distinct individual${distinctPersonCount(result) > 1 ? 's' : ''} (estimated) — max ${result.max_concurrent_persons} concurrent`
+        + (trackFragmentCount(result) > distinctPersonCount(result)
+          ? ` · ${trackFragmentCount(result)} tracker ID segments`
+          : '') });
 
   const alertFusions = result.fusion_insights.filter(f => f.alert);
   if (alertFusions.length > 0)
@@ -220,6 +226,81 @@ function EventFeed({ events }: { events: SurveillanceEvent[] }) {
 
 // ── Bar chart (pure CSS) ─────────────────────────────────────────────────────
 
+function FrameAnalyticsDeep({ points, durationS }: { points: FrameAnalyticsPoint[]; durationS: number }) {
+  if (!points.length) {
+    return (
+      <div className="text-center py-12 px-4">
+        <Layers className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+        <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">
+          Per-frame crowd density, motion, and action labels appear when the analyzer returns{' '}
+          <code className="px-1 py-0.5 rounded bg-white/10 text-cyan-400/90 text-[11px]">frame_analytics</code>.
+          Use the latest <code className="px-1 py-0.5 rounded bg-white/10 text-gray-400 text-[11px]">api_server.py</code> and re-run the job.
+        </p>
+      </div>
+    );
+  }
+  const maxP = Math.max(...points.map(p => p.person_count), 1);
+  const maxM = Math.max(...points.map(p => p.motion), 1e-6);
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">Crowd density (sampled frames)</p>
+        <div className="flex items-end gap-px h-28 bg-black/30 rounded-xl p-2 border border-white/10">
+          {points.map((p, i) => (
+            <div
+              key={i}
+              title={`${fmtSeconds(p.t)} · ${p.person_count} people`}
+              className="flex-1 min-w-[2px] rounded-t-sm bg-gradient-to-t from-cyan-700 to-cyan-400/95 hover:opacity-90 transition-opacity"
+              style={{ height: `${Math.max(8, (p.person_count / maxP) * 100)}%` }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-gray-600 text-[10px] mt-1 font-mono">
+          <span>0:00</span>
+          <span>{fmtSeconds(durationS)}</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">Scene motion (optical flow)</p>
+        <div className="flex items-end gap-px h-24 bg-black/30 rounded-xl p-2 border border-white/10">
+          {points.map((p, i) => (
+            <div
+              key={i}
+              title={`${fmtSeconds(p.t)} · motion ${p.motion.toFixed(3)}`}
+              className="flex-1 min-w-[2px] rounded-t-sm bg-gradient-to-t from-violet-800 to-violet-400/95 opacity-95"
+              style={{ height: `${Math.max(6, (p.motion / maxM) * 100)}%` }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="max-h-72 overflow-y-auto border border-white/10 rounded-xl">
+        <table className="w-full text-left text-xs">
+          <thead className="sticky top-0 bg-gray-950/95 backdrop-blur-sm border-b border-white/10">
+            <tr>
+              <th className="px-3 py-2 text-gray-500 font-semibold">Time</th>
+              <th className="px-3 py-2 text-gray-500 font-semibold">People</th>
+              <th className="px-3 py-2 text-gray-500 font-semibold">Motion</th>
+              <th className="px-3 py-2 text-gray-500 font-semibold">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((p, i) => (
+              <tr key={i} className="border-b border-white/5 hover:bg-white/5">
+                <td className="px-3 py-1.5 text-cyan-400 font-mono tabular-nums">{fmtSeconds(p.t)}</td>
+                <td className="px-3 py-1.5 text-white tabular-nums">{p.person_count}</td>
+                <td className="px-3 py-1.5 text-gray-400 tabular-nums">{p.motion.toFixed(3)}</td>
+                <td className="px-3 py-1.5 text-gray-300 capitalize truncate max-w-[12rem]">
+                  {p.action ? p.action.replace(/_/g, ' ') : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function HBarChart({ data, color = '#22d3ee' }: {
   data: { label: string; value: number }[];
   color?: string;
@@ -333,14 +414,15 @@ function VideoPlayer({ jobId }: { jobId: string }) {
 // ── Tab button ───────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'events',    label: 'Events',   icon: Shield   },
-  { key: 'ai',        label: 'Ask AI',   icon: Sparkles },
-  { key: 'fusion',    label: 'Fusion',   icon: Brain    },
-  { key: 'speech',    label: 'Speech',   icon: Mic      },
-  { key: 'audio',     label: 'Audio',    icon: Volume2  },
-  { key: 'objects',   label: 'Objects',  icon: Eye      },
-  { key: 'actions',   label: 'Actions',  icon: Target   },
-  { key: 'report',    label: 'Report',   icon: FileText },
+  { key: 'events',    label: 'Events',    icon: Shield   },
+  { key: 'perframe',  label: 'Per-frame', icon: Layers   },
+  { key: 'ai',        label: 'Ask AI',    icon: Sparkles },
+  { key: 'fusion',    label: 'Fusion',    icon: Brain    },
+  { key: 'speech',    label: 'Speech',    icon: Mic      },
+  { key: 'audio',     label: 'Audio',     icon: Volume2  },
+  { key: 'objects',   label: 'Objects',   icon: Eye      },
+  { key: 'actions',   label: 'Actions',   icon: Target   },
+  { key: 'report',    label: 'Report',    icon: FileText },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -379,6 +461,9 @@ export default function JobResults() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [tab, setTab]         = useState<TabKey>('events');
+  const [translateLang, setTranslateLang] = useState('en');
+  const [translatedText, setTranslatedText] = useState('');
+  const [translating, setTranslating] = useState(false);
 
   // Ref to prevent double-fetch: once we have a result, skip re-runs caused by user loading
   const gotResultRef = useRef(false);
@@ -407,8 +492,23 @@ export default function JobResults() {
       .finally(() => setLoading(false));
   }, [jobId]);
 
+  async function handleTranslateTranscript() {
+    if (!jobId) return;
+    setTranslating(true);
+    setTranslatedText('');
+    try {
+      const data = await getTranslatedTranscript(jobId, translateLang);
+      setTranslatedText(data.translated_text || data.message || 'No transcript available for translation.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Translation failed';
+      setTranslatedText(`Translation error: ${msg}`);
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   if (loading) return (
-    <div className="min-h-screen bg-transparent pt-20 flex items-center justify-center">
+    <div className="min-h-screen bg-transparent pt-24 flex items-center justify-center">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-gray-500">Loading analysis results…</p>
@@ -417,12 +517,12 @@ export default function JobResults() {
   );
 
   if (error) return (
-    <div className="min-h-screen bg-transparent pt-20 flex items-center justify-center">
+    <div className="min-h-screen bg-transparent pt-24 flex items-center justify-center">
       <div className="text-center">
         <AlertTriangle className="w-14 h-14 text-red-400 mx-auto mb-4" />
         <p className="text-red-300 font-medium">{error}</p>
-        <Link to="/dashboard">
-          <button className="mt-5 btn-dark text-sm">Back to Dashboard</button>
+        <Link to="/analyze">
+          <button className="mt-5 btn-dark text-sm">Back to Analyzer</button>
         </Link>
       </div>
     </div>
@@ -434,10 +534,11 @@ export default function JobResults() {
     video_name, duration_s, width, height, fps, total_frames,
     risk_level, risk_score, summary,
     surveillance_events, fusion_insights, speech_segments, audio_events,
-    unique_track_ids, max_concurrent_persons,
+    max_concurrent_persons,
     class_frequencies, action_frequencies, detected_languages,
     full_transcript, processing_time_s,
     severity_counts, top_objects, anomaly_timeline,
+    frame_analytics,
   } = result;
 
   const videoName     = video_name || 'Untitled';
@@ -448,6 +549,7 @@ export default function JobResults() {
 
   const tabCounts: Record<TabKey, number | null> = {
     events:  surveillance_events.length,
+    perframe: frame_analytics?.length ?? 0,
     ai:      null,
     fusion:  fusion_insights.length,
     speech:  cleanSpeech.length,
@@ -458,14 +560,14 @@ export default function JobResults() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="min-h-screen bg-transparent pt-20 sm:pt-24 pb-[env(safe-area-inset-bottom)] overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5 sm:space-y-6 min-w-0">
 
         {/* ── Breadcrumb + exports ── */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-sm">
+          <Link to="/analyze" className="inline-flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-sm">
             <ArrowLeft className="w-4 h-4" />
-            Dashboard
+            Analyzer
           </Link>
           <div className="flex gap-2 flex-wrap">
             <a href={getRagJsonUrl(jobId!)} target="_blank" rel="noopener noreferrer"
@@ -498,7 +600,7 @@ export default function JobResults() {
 
             {/* Video info + narrative + key findings */}
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-white truncate">{videoName}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{videoName}</h1>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-gray-400 text-sm">
                 <span>{fmtDuration(duration_s)}</span>
                 <span>·</span>
@@ -526,7 +628,7 @@ export default function JobResults() {
             </div>
 
             {/* Severity breakdown */}
-            <div className="flex-shrink-0 bg-black/25 rounded-xl p-4 min-w-44 border border-white/5">
+            <div className="flex-shrink-0 w-full md:w-auto bg-black/25 rounded-xl p-4 md:min-w-44 border border-white/5">
               <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">Severity</p>
               {(['critical', 'high', 'medium', 'low'] as const).map(sev => {
                 const cnt = severity_counts?.[sev] ?? 0;
@@ -541,6 +643,52 @@ export default function JobResults() {
           </div>
         </motion.div>
 
+        {/* ── Trust & Validation ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="rounded-2xl border border-white/10 bg-white/5 p-5"
+        >
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-white font-semibold flex items-center gap-2">
+                <Shield className="w-4 h-4 text-cyan-400" />
+                Trust & Validation Signals
+              </h2>
+              <p className="text-gray-400 text-sm mt-1 max-w-3xl">
+                Results are generated from multi-source evidence. Review confidence, severity, and correlated events before taking action.
+              </p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${severityBadgeClass(risk_level)}`}>
+              Overall Risk: {risk_level.toUpperCase()}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Fusion corroboration</p>
+              <p className="text-lg font-bold text-white mt-1">{alertFusions.length}/{fusion_insights.length || 1}</p>
+              <p className="text-xs text-gray-400 mt-1">Alert windows with multimodal agreement.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Speech evidence</p>
+              <p className="text-lg font-bold text-white mt-1">{cleanSpeech.length} segments</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {detected_languages.length > 0
+                  ? `${detected_languages.length} language profile(s) detected`
+                  : 'No language profile detected'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Identity stability</p>
+              <p className="text-lg font-bold text-white mt-1">{distinctPersonCount(result)} people</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Tracker fragments: {trackFragmentCount(result)} · lower fragmentation improves trust.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* ── Key Metrics ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -548,7 +696,7 @@ export default function JobResults() {
           transition={{ delay: 0.05 }}
           className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
         >
-          <MetricCard icon={Users}       label="Persons Tracked"     value={unique_track_ids.length}           sub={`Max ${max_concurrent_persons} concurrent`}  color="text-cyan-400"   bg="bg-cyan-500/10"   border="border-cyan-500/20" />
+          <MetricCard icon={Users}       label="Distinct individuals" value={distinctPersonCount(result)}       sub={trackFragmentCount(result) > distinctPersonCount(result) ? `Max ${max_concurrent_persons} concurrent · ${trackFragmentCount(result)} tracker IDs` : `Max ${max_concurrent_persons} concurrent`}  color="text-cyan-400"   bg="bg-cyan-500/10"   border="border-cyan-500/20" />
           <MetricCard icon={Shield}      label="Surveillance Events" value={surveillance_events.length}        sub={`${severity_counts?.critical ?? 0} critical`} color="text-red-400"    bg="bg-red-500/10"    border="border-red-500/20" />
           <MetricCard icon={Brain}       label="Fusion Insights"     value={fusion_insights.length}            sub={`${alertFusions.length} alerts`}               color="text-pink-400"   bg="bg-pink-500/10"   border="border-pink-500/20" />
           <MetricCard icon={Mic}         label="Speech Segments"     value={cleanSpeech.length}                sub={detected_languages.map(l => l.name || l.code).join(', ') || '—'} color="text-green-400"  bg="bg-green-500/10"  border="border-green-500/20" />
@@ -607,10 +755,14 @@ export default function JobResults() {
             <div className={tab === 'ai' ? '' : 'p-4'}>
 
               {/* AI Assistant */}
-              {tab === 'ai' && <AIAssistant result={result} />}
+              {tab === 'ai' && <AIAssistant result={result} jobId={jobId!} />}
 
               {/* Events */}
               {tab === 'events' && <EventFeed events={surveillance_events} />}
+
+              {tab === 'perframe' && (
+                <FrameAnalyticsDeep points={frame_analytics || []} durationS={duration_s} />
+              )}
 
               {/* Fusion insights */}
               {tab === 'fusion' && (
@@ -659,6 +811,39 @@ export default function JobResults() {
               {/* Speech */}
               {tab === 'speech' && (
                 <div className="space-y-3">
+                  <div className="bg-white/5 rounded-xl border border-white/10 p-3">
+                    <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">Translate Transcript</p>
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <select
+                        value={translateLang}
+                        onChange={e => setTranslateLang(e.target.value)}
+                        className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-sm text-gray-200 focus:outline-none focus:border-cyan-500/60"
+                      >
+                        <option value="en">English</option>
+                        <option value="ur">Urdu</option>
+                        <option value="ar">Arabic</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="es">Spanish</option>
+                        <option value="zh">Chinese</option>
+                        <option value="hi">Hindi</option>
+                        <option value="tr">Turkish</option>
+                        <option value="ru">Russian</option>
+                      </select>
+                      <button
+                        onClick={handleTranslateTranscript}
+                        disabled={translating}
+                        className="px-3 py-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-60 text-cyan-300 text-sm border border-cyan-500/30 transition-colors"
+                      >
+                        {translating ? 'Translating...' : 'Translate'}
+                      </button>
+                    </div>
+                    {translatedText && (
+                      <p className="mt-3 text-gray-300 text-sm leading-relaxed whitespace-pre-wrap bg-black/20 rounded-lg p-3 border border-white/10">
+                        {translatedText}
+                      </p>
+                    )}
+                  </div>
                   {detected_languages.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {detected_languages.map(l => (

@@ -144,7 +144,7 @@ class ObjectDetectorService:
             persons_for_pairs = []
 
             if seg_res and seg_res[0].boxes is not None:
-                boxes = seg_res[0].boxes; masks = seg_res[0].masks; names = seg_res[0].names
+                boxes = seg_res[0].boxes; names = seg_res[0].names
                 for box in boxes:
                     if names.get(int(box.cls[0]),"")=="person" and box.id is not None:
                         x1,y1,x2,y2=[float(v) for v in box.xyxyn[0]]

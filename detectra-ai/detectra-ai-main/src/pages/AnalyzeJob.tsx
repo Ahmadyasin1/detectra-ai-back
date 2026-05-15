@@ -9,6 +9,7 @@ import {
 import { getJobStatus, getJobResult, getWsUrl, JobStatus } from '../lib/detectraApi';
 import { useAuth } from '../contexts/AuthContext';
 import { updateVideoUpload } from '../lib/supabaseDb';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 // ── Pipeline stages ──────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ const STAGE_MAP: Record<string, number> = {
   fusion:           5,
   surveillance:     6,
   postprocessing:   7,
+  validation:       7,
   writingoutput:    7,
 };
 
@@ -64,7 +66,7 @@ function ProgressRing({ progress, status, currentStage }: { progress: number; st
   const isRun   = status === 'running' || status === 'pending';
 
   return (
-    <div className="relative w-52 h-52 mx-auto">
+    <div className="relative w-40 h-40 sm:w-52 sm:h-52 mx-auto">
       {/* Outer glow ring when active */}
       {isRun && (
         <div
@@ -73,7 +75,7 @@ function ProgressRing({ progress, status, currentStage }: { progress: number; st
         />
       )}
 
-      <svg viewBox="0 0 160 160" className="w-52 h-52 -rotate-90">
+      <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
         {/* Track */}
         <circle cx="80" cy="80" r={R} fill="none" stroke="#1f2937" strokeWidth="9" />
         {/* Progress arc */}
@@ -171,19 +173,20 @@ export default function AnalyzeJob() {
       if (data.status === 'completed' && !redirected) {
         redirected = true;
         appendLog('Analysis complete — saving results…');
-        // Persist full result to Supabase for offline access
-        if (user && jobId) {
-          getJobResult(jobId).then(result => {
-            updateVideoUpload(user.id, jobId, { status: 'completed', analysis_results: result });
-          }).catch(() => {
-            updateVideoUpload(user.id, jobId, { status: 'completed' });
-          });
+        if (user && jobId && isSupabaseConfigured) {
+          getJobResult(jobId)
+            .then((result) =>
+              updateVideoUpload(user.id, jobId, { status: 'completed', analysis_results: result }),
+            )
+            .catch(() =>
+              updateVideoUpload(user.id, jobId, { status: 'completed' }).catch(() => {}),
+            );
         }
-        setTimeout(() => navigate(`/dashboard/results/${jobId}`), 1800);
+        setTimeout(() => navigate(`/analyze/results/${jobId}`), 1800);
       }
       if (data.status === 'failed') {
         appendLog(`Error: ${data.error || 'Unknown failure'}`);
-        if (user && jobId) {
+        if (user && jobId && isSupabaseConfigured) {
           updateVideoUpload(user.id, jobId, { status: 'failed' }).catch(() => {});
         }
       }
@@ -249,7 +252,7 @@ export default function AnalyzeJob() {
 
     getJobStatus(jobId).then(d => {
       setJob(d);
-      if (d.status === 'completed') { navigate(`/dashboard/results/${jobId}`); return; }
+      if (d.status === 'completed') { navigate(`/analyze/results/${jobId}`); return; }
       if (d.status === 'failed') return;
       tryWs();
     }).catch(e => setError(e.message || 'Job not found'));
@@ -276,20 +279,20 @@ export default function AnalyzeJob() {
   const fmtElapsed = `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`;
 
   return (
-    <div className="min-h-screen bg-transparent pt-20">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="min-h-screen bg-transparent pt-20 sm:pt-24 pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
 
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-sm mb-8">
+        <Link to="/analyze" className="inline-flex items-center gap-2 text-gray-500 hover:text-cyan-400 transition-colors text-sm mb-8">
           <ArrowLeft className="w-4 h-4" />
-          Dashboard
+          Analyzer
         </Link>
 
         {error ? (
           <div className="text-center py-20">
             <AlertTriangle className="w-14 h-14 text-red-400 mx-auto mb-4" />
             <p className="text-red-300 font-medium">{error}</p>
-            <Link to="/dashboard">
-              <button className="mt-6 btn-dark text-sm">Back to Dashboard</button>
+            <Link to="/analyze">
+              <button className="mt-6 btn-dark text-sm">Back to Analyzer</button>
             </Link>
           </div>
         ) : !job ? (
@@ -445,8 +448,8 @@ export default function AnalyzeJob() {
                 <p className="text-red-400/70 text-sm font-mono break-all bg-black/30 rounded-xl p-3">
                   {job.error}
                 </p>
-                <Link to="/dashboard">
-                  <button className="mt-4 btn-dark text-sm">Return to Dashboard</button>
+                <Link to="/analyze">
+                  <button className="mt-4 btn-dark text-sm">Return to Analyzer</button>
                 </Link>
               </motion.div>
             )}
@@ -464,7 +467,7 @@ export default function AnalyzeJob() {
                   </div>
                   <p className="text-green-300 font-bold text-xl mb-1">Analysis Complete</p>
                   <p className="text-gray-400 text-sm mb-5">All 8 pipeline stages finished successfully</p>
-                  <Link to={`/dashboard/results/${jobId}`}>
+                  <Link to={`/analyze/results/${jobId}`}>
                     <motion.button
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}

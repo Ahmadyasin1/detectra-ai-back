@@ -1,0 +1,15 @@
+# NVIDIA GPU overrides for the ML API container.
+# Requires: NVIDIA Container Toolkit
+# Usage: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+
+services:
+  api:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      WARMUP_MODELS: ${WARMUP_MODELS:-1}

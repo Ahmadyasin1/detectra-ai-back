@@ -1,7 +1,10 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
-import { Mail, MapPin, Phone, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, MapPin, Phone, Send, CheckCircle, AlertCircle, Sparkles, Users } from 'lucide-react';
+
+const TEAM_PHOTO_SRC = '/3%20nomony.png';
+import PageHero from '../components/PageHero';
 import { submitContactForm } from '../lib/supabaseDb';
 
 export default function Contact() {
@@ -10,10 +13,12 @@ export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitErrorMsg, setSubmitErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitErrorMsg(null);
     const { error } = await submitContactForm({
       name: formData.name,
       email: formData.email,
@@ -21,6 +26,11 @@ export default function Contact() {
     });
     if (error) {
       setSubmitStatus('error');
+      setSubmitErrorMsg(
+        error === 'guest_mode'
+          ? 'Online form is unavailable right now — please email us directly at mianahmadyasin3@gmail.com.'
+          : error,
+      );
     } else {
       setSubmitStatus('success');
       setFormData({ name: '', email: '', message: '' });
@@ -33,7 +43,10 @@ export default function Contact() {
     {
       icon: Mail,
       title: 'Email',
-      details: ['mianahmadyasin3@gmail.com', 'usman.aamer@ucp.edu.pk (Supervisor)'],
+      details: [
+        'ahmadyasin.info@gmail.com',
+        'admin@nexariza.com'
+      ],
       color: 'from-blue-500 to-cyan-500',
     },
     {
@@ -45,7 +58,7 @@ export default function Contact() {
     {
       icon: MapPin,
       title: 'Location',
-      details: ['University of Central Punjab', 'Lahore, Pakistan', 'FOIT — Department of AI'],
+      details: ['University of Central Punjab', 'Lahore, Pakistan'],
       color: 'from-green-500 to-yellow-500',
     },
   ];
@@ -68,33 +81,27 @@ export default function Contact() {
     },
     {
       name:  'Dr. Usman Aamer',
-      role:  'Project Supervisor · Director FOIT',
-      email: 'usman.aamer@ucp.edu.pk',
+      role:  'Project Supervisor (Phases 1-2) · Director FOIT',
+      email: 'usmanaamer1@gmail.com',
+    },
+    {
+      name:  'Yasin Nasir',
+      role:  'Project Supervisor (Phases 3-4)',
+      email: 'yasin.nasir@ucp.edu.pk',
     },
   ];
 
   return (
-    <div className="pt-20">
-      {/* Hero Section */}
-      <section className="py-20 sm:py-32 bg-gradient-to-b from-gray-950 to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_var(--tw-gradient-stops))] from-cyan-500/5 via-transparent to-transparent" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-              Get In <span className="bg-gradient-to-r from-cyan-400 to-blue-600 bg-clip-text text-transparent">Touch</span>
-            </h1>
-            <p className="text-gray-300 text-xl max-w-3xl mx-auto">
-              Have a project in mind? Let's build something amazing together
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Contact"
+        badgeIcon={Mail}
+        title="Get In"
+        titleAccent="Touch"
+        description="Have a project in mind? Let's build something amazing together."
+      >
+        <div className="w-full max-w-5xl mx-auto">
+          <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
             {contactInfo.map((info, index) => (
               <motion.div
                 key={info.title}
@@ -122,12 +129,68 @@ export default function Contact() {
                 </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
+        </div>
+      </PageHero>
+
+      {/* Team photo */}
+      <section className="relative px-4 sm:px-6 lg:px-8 pb-4 sm:pb-8 -mt-2">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mb-8 sm:mb-10"
+          >
+            <span className="elite-label inline-flex items-center gap-2 mb-3">
+              <Users className="h-3.5 w-3.5 text-cyan-400" aria-hidden />
+              The people behind Detectra
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              Meet our <span className="text-gradient-cyan">core team</span>
+            </h2>
+            <p className="mt-2 text-gray-400 text-sm sm:text-base max-w-xl mx-auto">
+              BSAI Final Year Project · University of Central Punjab, Lahore
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 32, scale: 0.98 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="group relative"
+          >
+            <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.12 }}
+            className="max-w-5xl mx-auto mb-16"
+          >
+            <div className="relative rounded-3xl overflow-hidden border border-cyan-500/25 bg-white/5 backdrop-blur-md shadow-2xl shadow-cyan-500/10">
+              <img
+                src="/3 nomony.png"
+                alt="Detectra AI team group"
+                className="w-full h-[260px] sm:h-[660px] object-cover"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5 sm:p-7">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 text-xs font-semibold uppercase tracking-widest mb-3">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Detectra AI Core Team
+                </div>
+                <p className="text-white text-sm sm:text-base font-medium">
+                  Abdul Rehman , Ahmad Yasin , Eman Sarfraz 
+                </p>
+              </div>
+            </div>
+          </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* Contact Form & Team Section */}
-      <section ref={ref} className="py-20 sm:py-32 bg-white/5 backdrop-blur-md relative overflow-hidden">
+      <section ref={ref} className="py-16 sm:py-24 bg-white/5 backdrop-blur-md relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
@@ -205,10 +268,19 @@ export default function Contact() {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400"
+                      className="flex flex-col gap-2 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm text-left"
                     >
-                      <AlertCircle className="w-5 h-5" />
-                      <span>Failed to send message. Please try again.</span>
+                      <div className="flex items-center gap-2 font-medium text-red-400">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        Could not save your message
+                      </div>
+                      {submitErrorMsg && (
+                        <p className="text-red-400/80 text-xs leading-relaxed pl-7">
+                          {submitErrorMsg.includes('relation') || submitErrorMsg.includes('does not exist')
+                            ? 'The contact form needs the contact_submissions table in Supabase. Run the project SQL migration in the dashboard.'
+                            : submitErrorMsg}
+                        </p>
+                      )}
                     </motion.div>
                   )}
                 </form>

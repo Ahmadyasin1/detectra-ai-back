@@ -50,7 +50,6 @@ class AudioClassifierService:
     def _load_model(self):
         if AudioClassifierService._yamnet is None:
             try:
-                import tensorflow as tf
                 import tensorflow_hub as hub
 
                 logger.info("Loading YAMNet from TensorFlow Hub")

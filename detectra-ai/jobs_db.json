@@ -1,22 +1,22 @@
 {
-  "2028c101": {
-    "job_id": "2028c101",
-    "video_name": "424-136184216.mp4",
-    "video_path": "uploads\\2028c101.mp4",
+  "918bffc0": {
+    "job_id": "918bffc0",
+    "video_name": "24333-341474163_small.mp4",
+    "video_path": "uploads\\918bffc0.mp4",
     "user_id": "anonymous",
     "status": "completed",
     "progress": 100.0,
     "stage": "completed",
-    "created_at": "2026-05-01T17:52:05.025929+00:00",
-    "started_at": "2026-05-01T17:52:05.026928+00:00",
-    "completed_at": "2026-05-01T17:53:08.334734+00:00",
+    "created_at": "2026-05-15T10:16:07.922508+00:00",
+    "started_at": "2026-05-15T10:16:07.924509+00:00",
+    "completed_at": "2026-05-15T10:16:59.719940+00:00",
     "error": null,
     "result": {
-      "duration_s": 11.0,
-      "width": 1920,
-      "height": 1080,
-      "fps": 24.0,
-      "total_frames": 264,
+      "duration_s": 18.066666666666666,
+      "width": 960,
+      "height": 540,
+      "fps": 30.0,
+      "total_frames": 542,
       "speech_segments": [],
       "audio_events": [],
       "fusion_insights": [
@@ -24,83 +24,190 @@
           "window_start_s": 0.0,
           "window_end_s": 2.0,
           "scene_label": "empty_scene",
-          "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.867633581161499,
+          "anomaly_score": 0.29000000000000004,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
-          "severity": "normal",
-          "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~1 persons, primary action: appearing. Audio: silence."
+          "severity": "low",
+          "contributing_factors": [
+            "dense:5p"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: appearing. Audio: silence. Anomaly: dense:5p (score=0.29)."
         },
         {
           "window_start_s": 2.0,
           "window_end_s": 4.0,
           "scene_label": "empty_scene",
           "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.9024983644485474,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
           "severity": "normal",
           "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~1 persons, primary action: stationary. Audio: silence."
+          "description": "Scene: Empty Scene. ~4 persons, primary action: standing. Audio: silence."
         },
         {
           "window_start_s": 4.0,
           "window_end_s": 6.0,
           "scene_label": "empty_scene",
-          "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.9016686677932739,
+          "anomaly_score": 0.29000000000000004,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
-          "severity": "normal",
-          "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~1 persons, primary action: stationary. Audio: silence."
+          "severity": "low",
+          "contributing_factors": [
+            "dense:6p"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: standing. Audio: silence. Anomaly: dense:6p (score=0.29)."
         },
         {
           "window_start_s": 6.0,
           "window_end_s": 8.0,
           "scene_label": "empty_scene",
-          "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.7131147980690002,
+          "anomaly_score": 0.38,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
-          "severity": "normal",
-          "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~1 persons, primary action: standing. Audio: silence."
+          "severity": "low",
+          "contributing_factors": [
+            "dense:5p",
+            "high_motion(7.5)"
+          ],
+          "description": "Scene: Empty Scene. ~4 persons, primary action: standing. Audio: silence. Anomaly: dense:5p, high_motion(7.5) (score=0.38)."
         },
         {
           "window_start_s": 8.0,
           "window_end_s": 10.0,
           "scene_label": "empty_scene",
           "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.5,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
           "severity": "normal",
           "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~0 persons, primary action: unknown. Audio: silence."
+          "description": "Scene: Empty Scene. ~3 persons, primary action: stationary. Audio: silence."
         },
         {
           "window_start_s": 10.0,
-          "window_end_s": 11.0,
+          "window_end_s": 12.0,
           "scene_label": "empty_scene",
-          "anomaly_score": 0.2,
-          "visual_audio_alignment": 0.5,
+          "anomaly_score": 0.426510803125,
+          "visual_audio_alignment": 1.0,
           "confidence": 0.0625,
           "alert": false,
-          "severity": "normal",
-          "contributing_factors": [],
-          "description": "Scene: Empty Scene. ~0 persons, primary action: unknown. Audio: silence."
+          "severity": "low",
+          "contributing_factors": [
+            "dense:6p",
+            "count_jump",
+            "high_motion(5.1)"
+          ],
+          "description": "Scene: Empty Scene. ~4 persons, primary action: appearing. Audio: silence. Anomaly: dense:6p, count_jump, high_motion(5.1) (score=0.49)."
+        },
+        {
+          "window_start_s": 12.0,
+          "window_end_s": 14.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.38,
+          "visual_audio_alignment": 1.0,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "low",
+          "contributing_factors": [
+            "dense:7p",
+            "high_motion(5.4)"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: stationary. Audio: silence. Anomaly: dense:7p, high_motion(5.4) (score=0.38)."
+        },
+        {
+          "window_start_s": 14.0,
+          "window_end_s": 16.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.29000000000000004,
+          "visual_audio_alignment": 1.0,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "low",
+          "contributing_factors": [
+            "dense:6p"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: stationary. Audio: silence. Anomaly: dense:6p (score=0.29)."
+        },
+        {
+          "window_start_s": 16.0,
+          "window_end_s": 18.0,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.29000000000000004,
+          "visual_audio_alignment": 1.0,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "low",
+          "contributing_factors": [
+            "dense:5p"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: walking. Audio: silence. Anomaly: dense:5p (score=0.29)."
+        },
+        {
+          "window_start_s": 18.0,
+          "window_end_s": 18.066666666666666,
+          "scene_label": "empty_scene",
+          "anomaly_score": 0.29000000000000004,
+          "visual_audio_alignment": 1.0,
+          "confidence": 0.0625,
+          "alert": false,
+          "severity": "low",
+          "contributing_factors": [
+            "dense:5p"
+          ],
+          "description": "Scene: Empty Scene. ~5 persons, primary action: walking. Audio: silence. Anomaly: dense:5p (score=0.29)."
         }
       ],
       "surveillance_events": [
         {
-          "timestamp_s": 7.0,
+          "timestamp_s": 7.666666666666667,
+          "event_type": "fight",
+          "severity": "critical",
+          "description": "Physical altercation \u2014 person #32 aggressive posture",
+          "track_ids": [
+            32
+          ],
+          "confidence": 0.75
+        },
+        {
+          "timestamp_s": 11.333333333333334,
+          "event_type": "fight",
+          "severity": "critical",
+          "description": "Physical altercation \u2014 person #7 aggressive posture",
+          "track_ids": [
+            7
+          ],
+          "confidence": 0.75
+        },
+        {
+          "timestamp_s": 12.0,
+          "event_type": "tailgating",
+          "severity": "low",
+          "description": "Persons #4 & #15 unusually close for >6s",
+          "track_ids": [
+            4,
+            15
+          ],
+          "confidence": 0.7
+        },
+        {
+          "timestamp_s": 12.0,
+          "event_type": "crowd_surge",
+          "severity": "high",
+          "description": "Sudden crowd increase of +5 persons in scene",
+          "track_ids": [],
+          "confidence": 0.85
+        },
+        {
+          "timestamp_s": 13.333333333333334,
           "event_type": "person_vanished",
           "severity": "low",
-          "description": "Person #2 disappeared abruptly from scene at t=7.0s",
+          "description": "Person #17 disappeared abruptly from scene at t=13.3s",
           "track_ids": [
-            2
+            17
           ],
           "confidence": 0.65
         }
@@ -111,88 +218,450 @@
         3,
         4,
         5,
+        6,
         7,
         8,
+        9,
+        10,
+        11,
+        12,
+        14,
         15,
-        16,
-        18,
-        19
+        17,
+        32,
+        34,
+        42,
+        49,
+        50,
+        53,
+        60,
+        64,
+        67,
+        73,
+        112,
+        120,
+        126
       ],
-      "total_object_count": 123,
+      "distinct_individuals": 16,
+      "total_object_count": 511,
       "class_frequencies": {
-        "car": 55,
-        "person": 22,
-        "umbrella": 23,
-        "handbag": 3,
-        "truck": 8,
-        "potted plant": 12
+        "car": 193,
+        "person": 249,
+        "handbag": 18,
+        "truck": 27,
+        "backpack": 22,
+        "bus": 2
       },
       "action_frequencies": {
-        "appearing": 4,
-        "standing": 5,
-        "stationary": 13
+        "appearing": 12,
+        "standing": 19,
+        "stationary": 16,
+        "walking": 8
       },
-      "max_persons_in_frame": 1,
-      "peak_activity_ts": 0.0,
+      "max_persons_in_frame": 7,
+      "peak_activity_ts": 12.0,
       "full_transcript": "",
       "detected_language": "",
       "detected_language_name": "",
       "detected_languages": [],
-      "max_concurrent_persons": 1,
-      "summary": "1920x1080 | 11.0s. 11 unique persons; peak 1 at t=0.0s. Action: stationary. Objects: car, umbrella, potted plant, truck, handbag. Logos: Domino's. Risk: NORMAL (max=0.20, 0 alerts, 1 surv events).",
-      "processing_time_s": 62.78213300000061,
-      "video_name": "424-136184216",
-      "risk_level": "LOW",
-      "risk_score": 0.065,
+      "max_concurrent_persons": 7,
+      "summary": "960x540 | 18.1s. 16 distinct individual(s) (ByteTrack used 28 ID segments \u2014 normal when a person leaves/re-enters or is occluded); peak 7 concurrent at t=12.0s. Action: standing. Objects: car, truck, backpack, handbag, bus. Logos: Careem, Vans. Risk: LOW (max=0.43, 0 alerts, 5 surv events).",
+      "processing_time_s": 50.136534499999925,
+      "identities": [],
+      "reasoning": {},
+      "speech_engine": "",
+      "accuracy_engine_version": "",
+      "frame_analytics": [
+        {
+          "t": 0.0,
+          "person_count": 4,
+          "action": "appearing",
+          "motion": 0.0
+        },
+        {
+          "t": 0.333,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 0.2094
+        },
+        {
+          "t": 0.667,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 0.6458
+        },
+        {
+          "t": 1.0,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 1.2088
+        },
+        {
+          "t": 1.333,
+          "person_count": 5,
+          "action": "standing",
+          "motion": 1.6808
+        },
+        {
+          "t": 1.667,
+          "person_count": 5,
+          "action": "standing",
+          "motion": 2.0297
+        },
+        {
+          "t": 2.0,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 2.4812
+        },
+        {
+          "t": 2.333,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 2.4751
+        },
+        {
+          "t": 2.667,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 2.1833
+        },
+        {
+          "t": 3.0,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 1.759
+        },
+        {
+          "t": 3.333,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 1.4779
+        },
+        {
+          "t": 3.667,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 1.0176
+        },
+        {
+          "t": 4.0,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 0.9732
+        },
+        {
+          "t": 4.333,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 0.4913
+        },
+        {
+          "t": 4.667,
+          "person_count": 5,
+          "action": "standing",
+          "motion": 0.6217
+        },
+        {
+          "t": 5.0,
+          "person_count": 6,
+          "action": "standing",
+          "motion": 3.2658
+        },
+        {
+          "t": 5.333,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 8.1277
+        },
+        {
+          "t": 5.667,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 13.4991
+        },
+        {
+          "t": 6.0,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 9.2024
+        },
+        {
+          "t": 6.333,
+          "person_count": 5,
+          "action": "standing",
+          "motion": 7.3065
+        },
+        {
+          "t": 6.667,
+          "person_count": 5,
+          "action": "standing",
+          "motion": 7.8458
+        },
+        {
+          "t": 7.0,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 8.6071
+        },
+        {
+          "t": 7.333,
+          "person_count": 4,
+          "action": "standing",
+          "motion": 6.155
+        },
+        {
+          "t": 7.667,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 5.8149
+        },
+        {
+          "t": 8.0,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 3.1544
+        },
+        {
+          "t": 8.333,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 2.9005
+        },
+        {
+          "t": 8.667,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 2.3527
+        },
+        {
+          "t": 9.0,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 2.2847
+        },
+        {
+          "t": 9.333,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 2.6385
+        },
+        {
+          "t": 9.667,
+          "person_count": 3,
+          "action": "stationary",
+          "motion": 3.5072
+        },
+        {
+          "t": 10.0,
+          "person_count": 2,
+          "action": "walking",
+          "motion": 2.9721
+        },
+        {
+          "t": 10.333,
+          "person_count": 3,
+          "action": "appearing",
+          "motion": 2.2537
+        },
+        {
+          "t": 10.667,
+          "person_count": 3,
+          "action": "appearing",
+          "motion": 4.6294
+        },
+        {
+          "t": 11.0,
+          "person_count": 4,
+          "action": "appearing",
+          "motion": 4.9975
+        },
+        {
+          "t": 11.333,
+          "person_count": 5,
+          "action": "appearing",
+          "motion": 7.0245
+        },
+        {
+          "t": 11.667,
+          "person_count": 6,
+          "action": "appearing",
+          "motion": 8.6038
+        },
+        {
+          "t": 12.0,
+          "person_count": 7,
+          "action": "stationary",
+          "motion": 9.1491
+        },
+        {
+          "t": 12.333,
+          "person_count": 6,
+          "action": "standing",
+          "motion": 7.3099
+        },
+        {
+          "t": 12.667,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 4.8426
+        },
+        {
+          "t": 13.0,
+          "person_count": 4,
+          "action": "appearing",
+          "motion": 4.6374
+        },
+        {
+          "t": 13.333,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 4.0141
+        },
+        {
+          "t": 13.667,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 2.6217
+        },
+        {
+          "t": 14.0,
+          "person_count": 4,
+          "action": "stationary",
+          "motion": 2.7057
+        },
+        {
+          "t": 14.333,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 2.1432
+        },
+        {
+          "t": 14.667,
+          "person_count": 6,
+          "action": "stationary",
+          "motion": 2.5126
+        },
+        {
+          "t": 15.0,
+          "person_count": 6,
+          "action": "standing",
+          "motion": 2.592
+        },
+        {
+          "t": 15.333,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 2.5074
+        },
+        {
+          "t": 15.667,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 1.6837
+        },
+        {
+          "t": 16.0,
+          "person_count": 5,
+          "action": "stationary",
+          "motion": 1.708
+        },
+        {
+          "t": 16.333,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 2.64
+        },
+        {
+          "t": 16.667,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 2.9328
+        },
+        {
+          "t": 17.0,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 2.7823
+        },
+        {
+          "t": 17.333,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 4.2606
+        },
+        {
+          "t": 17.667,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 3.5241
+        },
+        {
+          "t": 18.0,
+          "person_count": 5,
+          "action": "walking",
+          "motion": 3.4089
+        }
+      ],
+      "video_name": "24333-341474163_small",
+      "risk_level": "CRITICAL",
+      "risk_score": 0.446,
       "anomaly_timeline": [
-        0.2,
+        0.29,
         0.0,
         0.2,
         0.0,
-        0.2,
+        0.29,
+        0.0,
+        0.38,
         0.0,
         0.2,
         0.0,
-        0.2,
+        0.4265,
         0.0,
-        0.2,
-        0.0
+        0.38,
+        0.0,
+        0.29,
+        0.0,
+        0.29,
+        0.0,
+        0.29
       ],
       "severity_counts": {
-        "critical": 0,
-        "high": 0,
+        "critical": 2,
+        "high": 1,
         "medium": 0,
-        "low": 1
+        "low": 2
       },
       "top_objects": [
         {
-          "label": "car",
-          "count": 55
-        },
-        {
-          "label": "umbrella",
-          "count": 23
-        },
-        {
           "label": "person",
-          "count": 22
+          "count": 249
         },
         {
-          "label": "potted plant",
-          "count": 12
+          "label": "car",
+          "count": 193
         },
         {
           "label": "truck",
-          "count": 8
+          "count": 27
+        },
+        {
+          "label": "backpack",
+          "count": 22
         },
         {
           "label": "handbag",
-          "count": 3
+          "count": 18
+        },
+        {
+          "label": "bus",
+          "count": 2
         }
       ]
     },
-    "report_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\2028c101_report.html",
-    "labeled_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\2028c101_labeled.mp4",
-    "processing_s": 63.31241420000151
+    "report_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\918bffc0_report.html",
+    "labeled_path": "F:\\working\\New FYP Ahmad Using Antigravity and Claude\\detectra-ai\\analysis_output\\918bffc0_labeled.mp4",
+    "processing_s": 51.7932538
   }
 }

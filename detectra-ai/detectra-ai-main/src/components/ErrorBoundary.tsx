@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component<Props, State> {
       if (import.meta.env.DEV) {
         console.log('Error report:', errorData);
       }
-    } catch (e) {
+    } catch {
       // Silent fail - error reporting should not break the app
     }
   }

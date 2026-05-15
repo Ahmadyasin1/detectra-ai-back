@@ -8,8 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.db.models.user import User
     from app.db.models.analysis_job import AnalysisJob
+    from app.db.models.user import User
 
 
 class VideoStatus(str, Enum):

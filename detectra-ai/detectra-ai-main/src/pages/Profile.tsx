@@ -4,10 +4,10 @@ import { motion } from 'framer-motion';
 import {
   User, Mail, Calendar, Edit2, Save, X, LogOut, UserCircle,
   Github, LayoutDashboard, CheckCircle, Activity, AlertTriangle,
-  Film, Shield, Clock,
+  Film, Shield, Clock, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserVideoUploads, type VideoUpload } from '../lib/supabaseDb';
+import { getUserVideoUploads, videoUrlToJobId, type VideoUpload } from '../lib/supabaseDb';
 import SEO from '../components/SEO';
 
 export default function Profile() {
@@ -17,6 +17,7 @@ export default function Profile() {
   const [fullName, setFullName]         = useState('');
   const [githubUsername, setGithubUsername] = useState('');
   const [avatarUrl, setAvatarUrl]       = useState('');
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const [saving, setSaving]             = useState(false);
   const [error, setError]               = useState<string | null>(null);
   const [success, setSuccess]           = useState(false);
@@ -32,6 +33,7 @@ export default function Profile() {
       setFullName(profile.full_name || '');
       setGithubUsername(profile.github_username || '');
       setAvatarUrl(profile.avatar_url || '');
+      setAvatarBroken(false);
     }
   }, [profile]);
 
@@ -46,10 +48,10 @@ export default function Profile() {
 
   const handleSave = async () => {
     setError(null); setSuccess(false); setSaving(true);
-    const { error } = await updateProfile({ 
-      full_name: fullName, 
-      github_username: githubUsername,
-      avatar_url: avatarUrl 
+    const { error } = await updateProfile({
+      full_name: fullName.trim() || null,
+      github_username: githubUsername.trim() || null,
+      avatar_url: avatarUrl.trim() || null,
     });
     if (error) setError(error.message || 'Failed to update profile');
     else { setSuccess(true); setIsEditing(false); setTimeout(() => setSuccess(false), 4000); }
@@ -68,7 +70,7 @@ export default function Profile() {
   const handleSignOut = async () => { await signOut(); navigate('/'); };
 
   if (authLoading) return (
-    <div className="min-h-screen pt-20 flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen pt-24 flex items-center justify-center relative overflow-hidden">
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/15 blur-[120px] rounded-full pointer-events-none" />
       <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
@@ -93,7 +95,7 @@ export default function Profile() {
   return (
     <>
       <SEO title="Profile — Detectra AI" description="Manage your Detectra AI profile and account settings." />
-      <div className="min-h-screen pt-20 relative overflow-hidden">
+      <div className="min-h-screen pt-24 relative overflow-hidden">
         <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
@@ -104,8 +106,13 @@ export default function Profile() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 pb-6 border-b border-white/10">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20 flex-shrink-0">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={displayName} className="w-16 h-16 rounded-2xl object-cover" />
+                  {profile?.avatar_url && !avatarBroken ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={displayName}
+                      className="w-16 h-16 rounded-2xl object-cover"
+                      onError={() => setAvatarBroken(true)}
+                    />
                   ) : (
                     <UserCircle className="w-9 h-9 text-white" />
                   )}
@@ -121,10 +128,10 @@ export default function Profile() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Link to="/dashboard">
+                <Link to="/analyze">
                   <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                     className="flex items-center gap-2 px-4 py-2 bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 rounded-xl text-sm font-medium hover:bg-cyan-500/25 transition-colors">
-                    <LayoutDashboard className="w-4 h-4" />Dashboard
+                    <LayoutDashboard className="w-4 h-4" />Analyzer
                   </motion.div>
                 </Link>
                 <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -227,9 +234,19 @@ export default function Profile() {
                   <Github className="w-3 h-3" />GitHub Username
                 </label>
                 {isEditing ? (
-                  <input type="text" value={githubUsername} onChange={e => setGithubUsername(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 transition-colors text-sm"
-                    placeholder="github-username" />
+                  <div className="flex gap-2">
+                    <input type="text" value={githubUsername} onChange={e => setGithubUsername(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 transition-colors text-sm"
+                      placeholder="github-username" />
+                    <button
+                      type="button"
+                      onClick={() => setGithubUsername('')}
+                      className="px-3 py-2.5 bg-white/10 text-gray-400 border border-white/20 rounded-xl text-xs hover:bg-white/15 hover:text-white transition-colors"
+                      title="Clear GitHub username"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 ) : (
                   <div className="px-4 py-2.5 bg-white/10 rounded-xl text-gray-300 text-sm border border-white/10 truncate">
                     {profile?.github_username || <span className="text-gray-600 italic">Not set</span>}
@@ -243,9 +260,19 @@ export default function Profile() {
                   Avatar Image URL
                 </label>
                 {isEditing ? (
-                  <input type="url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 transition-colors text-sm"
-                    placeholder="https://example.com/avatar.png" />
+                  <div className="flex gap-2">
+                    <input type="url" value={avatarUrl} onChange={e => { setAvatarUrl(e.target.value); setAvatarBroken(false); }}
+                      className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 transition-colors text-sm"
+                      placeholder="https://example.com/avatar.png" />
+                    <button
+                      type="button"
+                      onClick={() => { setAvatarUrl(''); setAvatarBroken(false); }}
+                      className="px-3 py-2.5 bg-white/10 text-gray-400 border border-white/20 rounded-xl text-xs hover:bg-white/15 hover:text-white transition-colors"
+                      title="Remove avatar URL"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 ) : (
                   <div className="px-4 py-2.5 bg-white/10 rounded-xl text-gray-300 text-sm border border-white/10 truncate">
                     {profile?.avatar_url || <span className="text-gray-600 italic">Not set</span>}
@@ -292,19 +319,58 @@ export default function Profile() {
             {uploads.length === 0 && !uploadsLoading && (
               <p className="text-gray-600 text-sm text-center py-6">
                 No videos analyzed yet.{' '}
-                <Link to="/dashboard" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                <Link to="/analyze" className="text-cyan-400 hover:text-cyan-300 transition-colors">
                   Upload your first video →
                 </Link>
               </p>
             )}
 
             {uploads.length > 0 && (
-              <Link to="/dashboard">
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cyan-500/15 to-blue-600/10 text-cyan-400 border border-cyan-500/30 rounded-xl text-sm font-medium hover:from-cyan-500/25 hover:to-blue-600/20 transition-all w-full justify-center">
-                  <LayoutDashboard className="w-4 h-4" />Open Dashboard to manage analyses
-                </motion.div>
-              </Link>
+              <>
+                <div className="rounded-xl border border-white/10 overflow-hidden mb-4">
+                  <div className="px-4 py-2 bg-white/5 border-b border-white/10 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Saved in your account (Supabase)
+                  </div>
+                  <ul className="divide-y divide-white/10 max-h-64 overflow-y-auto">
+                    {uploads.map(u => {
+                      const jid = videoUrlToJobId(u.video_url);
+                      if (!jid) return null;
+                      const target = u.status === 'completed'
+                        ? `/analyze/results/${jid}`
+                        : `/analyze/progress/${jid}`;
+                      return (
+                        <li key={u.id}>
+                          <Link
+                            to={target}
+                            className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-sm"
+                          >
+                            <div className="min-w-0 text-left">
+                              <p className="text-white font-medium truncate">{u.title}</p>
+                              <p className="text-gray-600 text-xs font-mono truncate">{jid}</p>
+                            </div>
+                            <span className={`flex-shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                              u.status === 'completed' ? 'text-green-400 border-green-500/30 bg-green-500/10' :
+                              u.status === 'failed' ? 'text-red-400 border-red-500/30 bg-red-500/10' :
+                              'text-cyan-400 border-cyan-500/30 bg-cyan-500/10'
+                            }`}>
+                              {u.status}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link to="/analyze" className="flex-1">
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      className="flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-cyan-500/15 to-blue-600/10 text-cyan-400 border border-cyan-500/30 rounded-xl text-sm font-medium hover:from-cyan-500/25 hover:to-blue-600/20 transition-all w-full">
+                      <LayoutDashboard className="w-4 h-4" />Open full analyzer
+                    </motion.div>
+                  </Link>
+                </div>
+              </>
             )}
           </motion.div>
 

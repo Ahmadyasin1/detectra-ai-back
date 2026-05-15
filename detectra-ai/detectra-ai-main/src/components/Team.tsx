@@ -40,13 +40,23 @@ export default function Team() {
     },
     {
       name: 'Usman Aamer',
-      role: 'Supervisor & Director',
+      role: 'Supervisor (Phases 1-2) & Director',
       org: 'FOIT, University of Central Punjab',
       bio: 'Distinguished academic leader and research supervisor guiding innovative AI projects and fostering technological advancement',
       avatar: '/usman-aamer.jpg',
       linkedin: 'https://linkedin.com/in/usman-aamer',
       github: '',
       email: 'usman.aamer@ucp.edu.pk',
+    },
+    {
+      name: 'Yasin Nasir',
+      role: 'Supervisor (Phases 3-4)',
+      org: 'University of Central Punjab',
+      bio: 'Academic supervisor for later project phases, focused on strengthening research quality and deployment rigor.',
+      avatar: '/yasin-nasir.jpg',
+      linkedin: '',
+      github: '',
+      email: 'yasin.nasir@ucp.edu.pk',
     },
   ];
 
@@ -99,16 +109,18 @@ export default function Team() {
                   <p className="text-gray-300 text-sm leading-relaxed mb-6">{member.bio}</p>
 
                   <div className="flex gap-3">
-                    <motion.a
-                      href={member.linkedin}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-colors"
-                    >
-                      <Linkedin className="w-4 h-4 text-cyan-400" />
-                    </motion.a>
+                    {member.linkedin && (
+                      <motion.a
+                        href={member.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-lg hover:bg-cyan-500/20 transition-colors"
+                      >
+                        <Linkedin className="w-4 h-4 text-cyan-400" />
+                      </motion.a>
+                    )}
                     {member.github && (
                       <motion.a
                         href={member.github}

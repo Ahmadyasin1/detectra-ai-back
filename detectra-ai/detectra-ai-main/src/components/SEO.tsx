@@ -9,18 +9,19 @@ interface SEOProps {
 }
 
 export default function SEO({
-  title = 'Detecra AI - Empowering the World with Intelligent Detection',
-  description = 'Advanced AI detection systems powered by Nexariza AI. Guided by Dr. Usman Aamer, Director of FOIT at University of Central Punjab. Transforming industries with cutting-edge artificial intelligence.',
+  title = 'Detectra AI - Multimodal Video Intelligence Platform',
+  description = 'Detectra AI helps security teams analyze surveillance footage with multimodal AI: incident detection, multilingual transcription, logo recognition, and premium investigation reports.',
   keywords = [
     'AI detection',
     'artificial intelligence',
     'computer vision',
     'machine learning',
     'Nexariza AI',
-    'Detecra AI',
+    'Detectra AI',
     'University of Central Punjab',
     'FOIT',
     'Dr. Usman Aamer',
+    'Dr. Yasin Nasir',
     'face detection',
     'industrial automation',
     'medical imaging',
@@ -29,7 +30,7 @@ export default function SEO({
     'real-time processing'
   ],
   image = '/og-image.jpg',
-  url = typeof window !== 'undefined' ? window.location.href : 'https://detecra.ai',
+  url = typeof window !== 'undefined' ? window.location.href : 'https://detectra.ai',
 }: SEOProps) {
   return (
     <Helmet>
@@ -37,7 +38,7 @@ export default function SEO({
       <title>{title}</title>
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords.join(', ')} />
-      <meta name="author" content="Detecra AI by Nexariza AI" />
+      <meta name="author" content="Detectra AI by Nexariza AI" />
       <meta name="robots" content="index, follow" />
       
       {/* Open Graph Tags */}
@@ -46,7 +47,7 @@ export default function SEO({
       <meta property="og:image" content={image} />
       <meta property="og:url" content={url} />
       <meta property="og:type" content="website" />
-      <meta property="og:site_name" content="Detecra AI" />
+      <meta property="og:site_name" content="Detectra AI" />
       
       {/* Twitter Card Tags */}
       <meta name="twitter:card" content="summary_large_image" />
@@ -74,29 +75,41 @@ export default function SEO({
         {JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          "name": "Detecra AI",
-          "alternateName": "Detecra AI by Nexariza AI",
-          "url": "https://detecra.ai",
-          "logo": "https://detecra.ai/logo.png",
+          "name": "Detectra AI",
+          "alternateName": "Detectra AI by Nexariza AI",
+          "url": "https://detectra.ai",
+          "logo": "https://detectra.ai/logo.png",
           "description": description,
           "foundingDate": "2023",
           "founder": {
             "@type": "Person",
             "name": "Ahmad Yasin"
           },
-          "supervisor": {
-            "@type": "Person",
-            "name": "Dr. Usman Aamer",
-            "jobTitle": "Director of FOIT",
-            "worksFor": {
-              "@type": "Organization",
-              "name": "University of Central Punjab"
+          "mentor": [
+            {
+              "@type": "Person",
+              "name": "Dr. Usman Aamer",
+              "jobTitle": "Director of FOIT",
+              "description": "Supervisor for Phases 1-2",
+              "worksFor": {
+                "@type": "Organization",
+                "name": "University of Central Punjab"
+              }
+            },
+            {
+              "@type": "Person",
+              "name": "Dr. Yasin Nasir",
+              "description": "Supervisor for Phases 3-4",
+              "worksFor": {
+                "@type": "Organization",
+                "name": "University of Central Punjab"
+              }
             }
-          },
+          ],
           "sameAs": [
-            "https://linkedin.com/company/detecra-ai",
-            "https://github.com/detecra-ai",
-            "https://twitter.com/detecra_ai"
+            "https://linkedin.com/company/detectra-ai",
+            "https://github.com/Ahmadyasin1",
+            "https://twitter.com/detectra_ai"
           ],
           "contactPoint": {
             "@type": "ContactPoint",

@@ -16,7 +16,7 @@ export default function SignIn() {
   const navigate                            = useNavigate();
   const location                            = useLocation();
 
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard';
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/analyze';
 
   // Reactive navigation: navigate as soon as user becomes authenticated
   // This avoids a 100ms race condition where ProtectedRoute sees user=null
@@ -89,7 +89,7 @@ export default function SignIn() {
   return (
     <>
       <SEO title="Sign In — Detectra AI" description="Sign in to your Detectra AI account to access the full analysis pipeline." />
-      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-transparent">
+      <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 py-10 sm:py-12 pt-24 pb-[max(2.5rem,env(safe-area-inset-bottom))] bg-transparent">
 
         {/* Background glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(34,211,238,0.06)_0%,transparent_60%)] pointer-events-none" />
@@ -101,7 +101,7 @@ export default function SignIn() {
           className="relative w-full max-w-md"
         >
           {/* Card */}
-          <div className="bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 p-8">
+          <div className="bg-white/5 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 p-5 sm:p-8">
 
             {/* Header */}
             <div className="text-center mb-8">
@@ -113,7 +113,7 @@ export default function SignIn() {
             </div>
 
             {/* Social auth */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <button
                 type="button"
                 onClick={() => handleSocial('google')}

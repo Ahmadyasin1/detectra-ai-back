@@ -4,6 +4,7 @@ Uses SQLite in-memory DB so no PostgreSQL needed for unit tests.
 """
 # ── Set env vars BEFORE any app imports so pydantic-settings reads them ──────
 import os
+
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL_OVERRIDE", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_ci_only_not_production")
@@ -14,6 +15,7 @@ os.environ.setdefault("DEBUG", "true")
 
 # Bust the lru_cache so settings picks up the env overrides above
 from app.config import get_settings  # noqa: E402
+
 get_settings.cache_clear()
 
 import pytest  # noqa: E402
@@ -22,10 +24,10 @@ from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
+import app.db.models  # noqa: E402,F401  ensure models are registered
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.main import app as fastapi_app  # noqa: E402
-import app.db.models  # noqa: E402,F401  ensure models are registered
 
 # SQLite in-memory engine for tests
 SQLALCHEMY_TEST_URL = "sqlite:///:memory:"

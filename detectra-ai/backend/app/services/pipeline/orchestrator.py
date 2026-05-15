@@ -72,9 +72,9 @@ def run_analysis_pipeline(self, job_id: int, video_path: str, config: dict[str, 
     Multi-agent surveillance video analysis pipeline.
     Coordinates StreamAgent → PerceptionAgent → ReasoningAgent → DB persistence.
     """
-    from app.db.session import SessionLocal
     from app.db.models.analysis_job import AnalysisJob, JobStatus
     from app.db.models.video import Video, VideoStatus
+    from app.db.session import SessionLocal
 
     db = SessionLocal()
     try:

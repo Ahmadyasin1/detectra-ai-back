@@ -1,5 +1,4 @@
 """Tests for authentication endpoints."""
-import pytest
 
 
 def test_register_success(client):

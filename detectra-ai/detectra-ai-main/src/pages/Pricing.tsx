@@ -6,6 +6,7 @@ import {
   Sparkles, Brain, FileJson, Film, Download, Users, Cpu,
   HelpCircle, type LucideIcon,
 } from 'lucide-react';
+import PageHero from '../components/PageHero';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -196,45 +197,32 @@ export default function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <div className="min-h-screen bg-transparent pt-20">
-
-      {/* ── Header ── */}
-      <section className="py-16 sm:py-24 bg-gradient-to-b from-gray-900 to-gray-950 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(34,211,238,0.07),transparent_60%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-grid-dark opacity-30 pointer-events-none" />
-
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-full text-xs font-semibold mb-5">
-              <Zap className="w-3.5 h-3.5" />
-              Simple, Transparent Pricing
-            </span>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-5">
-              Analyse video at any <span className="text-gradient-cyan">scale</span>
-            </h1>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
-              Start free, upgrade when your team grows. All plans include full access to the 6-model AI pipeline — no hidden fees.
-            </p>
-
-            {/* Billing toggle */}
-            <div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1.5">
-              <button
-                onClick={() => setAnnual(false)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!annual ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setAnnual(true)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${annual ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-              >
-                Annual
-                <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full border border-green-500/30">-20%</span>
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-transparent">
+      <PageHero
+        badge="Simple, Transparent Pricing"
+        badgeIcon={Zap}
+        title="Analyse video at any"
+        titleAccent="scale"
+        description="Start free, upgrade when your team grows. All plans include full access to the 6-model AI pipeline — no hidden fees."
+      >
+        <motion.div className="inline-flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1.5">
+          <button
+            type="button"
+            onClick={() => setAnnual(false)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${!annual ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnnual(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${annual ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            Annual
+            <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full border border-green-500/30">-20%</span>
+          </button>
+        </motion.div>
+      </PageHero>
 
       {/* ── Plans ── */}
       <section className="py-12 sm:py-16">
@@ -331,7 +319,8 @@ export default function Pricing() {
             <p className="text-gray-500 text-sm">Everything included in each plan, in one view.</p>
           </motion.div>
 
-          <div className="card-glass overflow-hidden">
+          <div className="card-glass overflow-hidden scroll-x-touch -mx-4 sm:mx-0">
+            <div className="min-w-[36rem]">
             {/* Table header */}
             <div className="grid grid-cols-4 border-b border-white/10 bg-white/5 backdrop-blur-md">
               <div className="px-5 py-4 text-gray-500 text-xs font-semibold uppercase tracking-wider">Feature</div>
@@ -362,6 +351,7 @@ export default function Pricing() {
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       </section>
