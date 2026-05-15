@@ -1,0 +1,130 @@
+/* Dashboard Accessibility & Performance Styles */
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 10000;
+  transition: top 0.2s;
+  text-decoration: none;
+  font-size: 14px;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Focus styles for keyboard navigation */
+*:focus {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+/* High contrast support */
+@media (prefers-contrast: high) {
+  .glass {
+    border: 2px solid #fff;
+    background: rgba(0, 0, 0, 0.9);
+  }
+  
+  button, a {
+    border: 1px solid #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only-focusable:active,
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Live region for announcements */
+.live-region {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Better contrast for status badges */
+.badge-critical {
+  background: #991b1b !important;
+  color: #fff !important;
+  border-color: #dc2626 !important;
+}
+
+.badge-high {
+  background: #b45309 !important;
+  color: #fff !important;
+  border-color: #f59e0b !important;
+}
+
+/* Loading spinners respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+}
+
+/* Ensure interactive elements have minimum touch target size */
+@media (max-width: 768px) {
+  button, a[role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Make sure focus is visible on all interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.3);
+}
