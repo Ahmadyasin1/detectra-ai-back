@@ -87,7 +87,9 @@ _start_time = time.perf_counter()
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 API_HOST        = os.getenv("API_HOST", "0.0.0.0")
-API_PORT        = int(os.getenv("API_PORT", "8000"))
+# Heroku sets PORT; local Docker uses API_PORT
+API_PORT        = int(os.getenv("PORT", os.getenv("API_PORT", "8000")))
+WARMUP_MODELS   = os.getenv("WARMUP_MODELS", "1").strip().lower() in ("1", "true", "yes")
 MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_MB", "500"))
 UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(SCRIPT_DIR / "uploads")))
 OUTPUT_DIR_API  = SCRIPT_DIR / "analysis_output"
@@ -867,7 +869,10 @@ def _run_analysis_worker(job_id: str):
 async def lifespan(_app: FastAPI):
     global _loop
     _loop = asyncio.get_running_loop()
-    _loop.create_task(_preload_models())
+    if WARMUP_MODELS:
+        _loop.create_task(_preload_models())
+    else:
+        print("  [INIT] WARMUP_MODELS=0 — models load on first analysis request")
     yield
 
 

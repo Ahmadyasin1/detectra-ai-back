@@ -16,7 +16,8 @@ test videos/
 *.mp4
 *.pdf
 *.doc
-*.html
+Detectra_AI_Implementation_Blueprint.html
+tmp_index.html
 *.zip
 jobs_db.sqlite3
 package-lock.json
