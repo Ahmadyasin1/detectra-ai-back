@@ -1,9 +1,17 @@
 {
   "name": "Detectra AI API",
-  "description": "ML video API. Root Aptfile installs ffmpeg; Python deps from requirements.txt.",
+  "description": "ML video API. Apt buildpack (ffmpeg) + Python. See detectra-ai/HEROKU.md.",
   "stack": "heroku-24",
   "buildpacks": [
     { "url": "https://github.com/heroku/heroku-buildpack-apt" },
     { "url": "heroku/python" }
-  ]
+  ],
+  "env": {
+    "DETECTRA_HEADLESS": "1",
+    "WARMUP_MODELS": "0",
+    "DETECTRA_DATA_DIR": "/tmp/detectra",
+    "UPLOAD_DIR": "/tmp/detectra/uploads",
+    "OUTPUT_DIR": "/tmp/detectra/analysis_output",
+    "JOBS_DB_PATH": "/tmp/detectra/jobs_db.json"
+  }
 }

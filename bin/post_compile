@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Heroku Python buildpack — runs after pip install.
+set -euo pipefail
+
+echo "-----> Detectra: enforce opencv-python-headless (fixes libGL.so.1 on Heroku)"
+
+for pkg in opencv-python opencv-contrib-python opencv-contrib-python-headless; do
+  pip uninstall -y "$pkg" 2>/dev/null || true
+done
+
+pip install --no-cache-dir --force-reinstall "opencv-python-headless==4.10.0.84"
+
+python - <<'PY'
+import importlib.metadata as im
+import sys
+
+installed = {d.metadata["Name"].lower() for d in im.distributions()}
+if "opencv-python" in installed:
+    sys.stderr.write("ERROR: opencv-python (GUI) is still installed — needs libGL on Heroku.\n")
+    sys.exit(1)
+if "opencv-python-headless" not in installed:
+    sys.stderr.write("ERROR: opencv-python-headless is not installed.\n")
+    sys.exit(1)
+
+import cv2
+import numpy as np
+
+cv2.cvtColor(np.zeros((8, 8, 3), dtype=np.uint8), cv2.COLOR_BGR2GRAY)
+print("-----> OpenCV OK:", cv2.__version__, "| headless package confirmed")
+PY
+
+python -c "from detectra_cv2 import cv2; print('-----> detectra_cv2 import OK:', cv2.__version__)"
+python -c "import analyze_videos; print('-----> analyze_videos import OK')"

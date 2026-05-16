@@ -38,14 +38,21 @@ to the **root** of https://github.com/Ahmadyasin1/detectra-ai-back (same level a
 
 | Upload this file | From local path |
 |------------------|-----------------|
-| `api_server.py` | `detectra-ai/api_server.py` |
-| `analyze_videos.py` | `detectra-ai/analyze_videos.py` |
-| `detectra_accuracy.py` | `detectra-ai/detectra_accuracy.py` |
-| `requirements.api.txt` | `detectra-ai/requirements.api.txt` |
-| `dashboard.html` | `detectra-ai/dashboard.html` |
-| `Dockerfile.heroku` | repo root `Dockerfile.heroku` (parent folder) |
-| `heroku.yml` | repo root `heroku.yml` |
-| `app.json` | repo root `app.json` |
+| `api_server.py` | repo root (or `detectra-ai/`) |
+| `analyze_videos.py` | repo root |
+| `detectra_accuracy.py` | repo root |
+| `detectra_cv2.py` | repo root — **required** for Heroku OpenCV |
+| `requirements.txt` | repo root — points to `requirements.heroku.txt` |
+| `requirements.heroku.txt` | repo root |
+| `requirements.api.txt` | repo root (local full install) |
+| `Procfile` | `web: bash bin/start` |
+| `bin/post_compile` | removes GUI OpenCV after pip install |
+| `bin/start` | startup check + uvicorn |
+| `Aptfile` | ffmpeg + libGL libs |
+| `app.json` | Apt + Python buildpack order |
+| `dashboard.html` | repo root |
+| `Dockerfile.heroku` | repo root |
+| `heroku.yml` | repo root (Container stack) |
 | `HEROKU.md` | `detectra-ai/HEROKU.md` |
 
 ### Frontend (required for the website)
@@ -76,6 +83,10 @@ Upload the **entire folder**:
 detectra-ai-back/
 ├── heroku.yml              ← Heroku Container config
 ├── Dockerfile.heroku       ← API Docker image
+├── Procfile                ← web: bash bin/start
+├── bin/post_compile        ← fix OpenCV on build
+├── bin/start               ← runtime entry
+├── detectra_cv2.py         ← headless OpenCV
 ├── api_server.py           ← ML API (UI uses this)
 ├── analyze_videos.py
 ├── detectra_accuracy.py

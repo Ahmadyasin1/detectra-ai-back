@@ -13,11 +13,16 @@ RUN pip install --no-cache-dir \
     torch torchvision --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r requirements.heroku.txt \
     && pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true \
-    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84
+    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84 \
+    && python -c "import importlib.metadata as im; n={d.metadata['Name'].lower() for d in im.distributions()}; assert 'opencv-python' not in n and 'opencv-python-headless' in n; import cv2; print('OpenCV OK', cv2.__version__)"
 
-COPY api_server.py analyze_videos.py detectra_accuracy.py dashboard.html ./
-RUN mkdir -p uploads analysis_output
+COPY api_server.py analyze_videos.py detectra_accuracy.py detectra_cv2.py dashboard.html ./
+COPY bin/start ./bin/start
+RUN chmod +x ./bin/start
+RUN mkdir -p /tmp/detectra/uploads /tmp/detectra/analysis_output
 
-ENV PYTHONUNBUFFERED=1 API_HOST=0.0.0.0 UPLOAD_DIR=/app/uploads
+ENV PYTHONUNBUFFERED=1 API_HOST=0.0.0.0 \
+    DETECTRA_HEADLESS=1 WARMUP_MODELS=0 DETECTRA_DATA_DIR=/tmp/detectra \
+    UPLOAD_DIR=/tmp/detectra/uploads OUTPUT_DIR=/tmp/detectra/analysis_output
 
-CMD ["/bin/sh", "-c", "mkdir -p uploads analysis_output && exec python -u api_server.py"]
+CMD ["/bin/bash", "bin/start"]

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Heroku web dyno entrypoint — verify OpenCV then start API.
+set -euo pipefail
+
+ROOT="${DETECTRA_DATA_DIR:-/tmp/detectra}"
+export DETECTRA_HEADLESS="${DETECTRA_HEADLESS:-1}"
+export MPLBACKEND="${MPLBACKEND:-Agg}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+export DETECTRA_DATA_DIR="${ROOT}"
+export UPLOAD_DIR="${UPLOAD_DIR:-${ROOT}/uploads}"
+export OUTPUT_DIR="${OUTPUT_DIR:-${ROOT}/analysis_output}"
+export JOBS_DB_PATH="${JOBS_DB_PATH:-${ROOT}/jobs_db.json}"
+
+mkdir -p "${UPLOAD_DIR}" "${OUTPUT_DIR}"
+
+echo "-----> Detectra start: UPLOAD_DIR=${UPLOAD_DIR} OUTPUT_DIR=${OUTPUT_DIR}"
+
+python -c "from detectra_cv2 import cv2; print('-----> OpenCV startup OK:', cv2.__version__)"
+
+exec uvicorn api_server:app --host 0.0.0.0 --port "${PORT}" --workers 1
