@@ -1,0 +1,31 @@
+# ─── Heroku / slim CPU deploy (Python buildpack or small Docker images) ─────
+# Same as requirements.api.txt but WITHOUT openai-whisper (pulls triton + ~hundreds MB).
+# Speech uses faster-whisper only. For local full stack: pip install -r requirements.api.txt
+#
+# ── Tier 1: web framework ─────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+websockets>=12.0
+wsproto>=1.2.0
+python-multipart==0.0.17
+aiofiles==24.1.0
+
+# ── Tier 1: computer vision + ML ──────────────────────────────────────────────
+ultralytics>=8.3.40
+opencv-python-headless>=4.10.0.84
+
+# ── Tier 1: audio (no openai-whisper on Heroku — use faster-whisper) ───────
+librosa>=0.10.2
+soundfile>=0.12.1
+noisereduce>=3.0.3
+
+# ── Tier 1: misc ─────────────────────────────────────────────────────────────
+numpy>=1.26.4
+pillow>=11.0.0
+easyocr>=1.7.2
+python-dotenv>=1.0.1
+PyJWT>=2.8.0
+
+# ── Tier 2: speech (required for this file — replaces openai-whisper) ───────
+faster-whisper>=1.0.3
+ctranslate2>=4.4.0

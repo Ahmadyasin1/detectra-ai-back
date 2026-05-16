@@ -530,10 +530,10 @@ def _get_analyzer():
                 print("  [INIT] Loading AI Multi-Model Analyzer (Lazy)...")
                 from analyze_videos import DetectraAnalyzer
                 _analyzer = DetectraAnalyzer()
-                # Trigger internal model loads
+                # Vision models only — do not preload openai-whisper here. _run_whisper prefers
+                # faster-whisper; openai-whisper loads lazily only if that path fails / is missing.
                 _analyzer._load_seg()
                 _analyzer._load_pose()
-                _analyzer._load_whisper()
     return _analyzer
 
 

@@ -9,6 +9,17 @@ See **[GITHUB_UPLOAD.md](../GITHUB_UPLOAD.md)** if you used “Add files via upl
 
 Use **Heroku Container** (`heroku.yml` at repo root → `Dockerfile.heroku`), not the default buildpack.
 
+### If you use the Python buildpack instead (logs show `heroku/python`)
+
+1. **Slug limit (~900 MB)** — Root `requirements.txt` installs `requirements.heroku.txt` (no `openai-whisper` / Triton). Full ASR fallback is `pip install -r requirements.api.txt` locally.
+2. **ffmpeg** — Root `Aptfile` is only applied if the **Apt** buildpack runs **before** Python. From the repo root, `app.json` lists the correct order; for an existing app run:
+   ```bash
+   heroku buildpacks:clear -a YOUR_APP
+   heroku buildpacks:add https://github.com/heroku/heroku-buildpack-apt -a YOUR_APP
+   heroku buildpacks:add heroku/python -a YOUR_APP
+   ```
+3. Prefer **Container** stack for reproducible ML images: `heroku stack:set container -a YOUR_APP` and deploy with `heroku.yml` (no Python slug).
+
 ---
 
 ## Architecture on Heroku

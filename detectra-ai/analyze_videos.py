@@ -1988,8 +1988,14 @@ class DetectraAnalyzer:
 
     def _load_whisper(self):
         if self._whisper is None:
-            print(f"  [Whisper] Loading {WHISPER_MODEL}...")
-            import whisper as _w
+            print(f"  [Whisper] Loading {WHISPER_MODEL} (openai-whisper)...")
+            try:
+                import whisper as _w
+            except ImportError as e:
+                raise RuntimeError(
+                    "openai-whisper is not installed. Use faster-whisper (default on Heroku), "
+                    "or install the full stack: pip install -r requirements.api.txt"
+                ) from e
             self._whisper = _w.load_model(WHISPER_MODEL)
             print("  [Whisper] Ready")
         return self._whisper
@@ -2381,8 +2387,14 @@ class DetectraAnalyzer:
                 print(f"  [Speech] faster-whisper path failed ({exc}); "
                       f"falling back to openai-whisper")
 
+        try:
+            wm = self._load_whisper()
+        except RuntimeError as err:
+            print(f"  [Speech] {err}")
+            self._last_detected_languages = []
+            return []
+
         import whisper as _w
-        wm = self._load_whisper()
         segs = []
         try:
             # Quick probe: detect dominant language on first 30s to decide
