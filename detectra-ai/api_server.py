@@ -91,8 +91,10 @@ API_HOST        = os.getenv("API_HOST", "0.0.0.0")
 API_PORT        = int(os.getenv("PORT", os.getenv("API_PORT", "8000")))
 WARMUP_MODELS   = os.getenv("WARMUP_MODELS", "0").strip().lower() in ("1", "true", "yes")
 MAX_UPLOAD_MB   = int(os.getenv("MAX_UPLOAD_MB", "500"))
-UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(SCRIPT_DIR / "uploads")))
-OUTPUT_DIR_API  = SCRIPT_DIR / "analysis_output"
+_DATA_ROOT      = Path(os.getenv("DETECTRA_DATA_DIR", "/tmp/detectra" if os.getenv("DYNO") else str(SCRIPT_DIR)))
+_DATA_ROOT.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(_DATA_ROOT / "uploads")))
+OUTPUT_DIR_API  = Path(os.getenv("OUTPUT_DIR", str(_DATA_ROOT / "analysis_output")))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR_API.mkdir(parents=True, exist_ok=True)
 
@@ -453,7 +455,7 @@ class AnalysisJob:
 
 
 # ── Job persistence ───────────────────────────────────────────────────────────
-JOBS_DB = SCRIPT_DIR / "jobs_db.json"
+JOBS_DB = Path(os.getenv("JOBS_DB_PATH", str(_DATA_ROOT / "jobs_db.json")))
 
 def _save_jobs():
     """Serialize the in-memory job store to a JSON file."""
@@ -507,6 +509,18 @@ def _load_jobs():
         print(f"  [DB] Loaded {len(_jobs)} jobs from {JOBS_DB.name}")
     except Exception as e:
         print(f"  [DB] Error loading jobs: {e}")
+
+
+def _resolve_job(job_id: str, *, reload_disk: bool = False) -> AnalysisJob | None:
+    """Return a job from memory, optionally reloading jobs_db.json (Heroku /tmp, dyno restarts)."""
+    job = _jobs.get(job_id)
+    if job is not None:
+        return job
+    if reload_disk:
+        _load_jobs()
+        job = _jobs.get(job_id)
+    return job
+
 
 # ── In-memory job store ───────────────────────────────────────────────────────
 _jobs:     dict[str, AnalysisJob] = {}
@@ -1093,7 +1107,7 @@ async def start_analysis_from_url(
 
 def _require_job_access(job_id: str, current_user: dict | None) -> "AnalysisJob":
     """Return job if it exists and belongs to the current user; else raise 404/403."""
-    job = _jobs.get(job_id)
+    job = _resolve_job(job_id, reload_disk=True)
     if not job:
         raise HTTPException(404, f"Job '{job_id}' not found")
     if SUPABASE_JWT_SECRET and current_user:
@@ -1393,9 +1407,18 @@ async def live_status():
 @app.websocket("/ws/{job_id}")
 async def ws_job(websocket: WebSocket, job_id: str):
     await websocket.accept()
-    job = _jobs.get(job_id)
+    job = None
+    for attempt in range(6):
+        job = _resolve_job(job_id, reload_disk=(attempt > 0))
+        if job:
+            break
+        await asyncio.sleep(0.25 + attempt * 0.15)
     if not job:
-        await websocket.send_json({"type": "error", "error": f"Job '{job_id}' not found"})
+        await websocket.send_json({
+            "type": "error",
+            "error": f"Job '{job_id}' not found",
+            "hint": "If this persists, ensure only one web dyno is running (heroku ps:scale web=1).",
+        })
         await websocket.close()
         return
 

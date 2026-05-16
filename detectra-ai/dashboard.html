@@ -445,10 +445,20 @@
       const msg = JSON.parse(evt.data);
       if (msg.type === 'progress') {
         updateProcUI(msg.progress, msg.stage);
+      } else if (msg.type === 'state') {
+        updateProcUI(msg.progress ?? 5, msg.stage ?? 'running');
+        if (msg.status === 'completed') finishProc(jobId);
+        else if (msg.status === 'failed') { alert(`Analysis failed: ${msg.error || 'unknown'}`); closeProc(); }
       } else if (msg.type === 'completed' || msg.status === 'completed') {
         finishProc(jobId);
       } else if (msg.type === 'error') {
-        alert(`Analysis Error: ${msg.error}`);
+        const err = msg.error || '';
+        if (/not found/i.test(err)) {
+          $('p-stage').textContent = 'SYNCING JOB — POLLING API…';
+          pollJob(jobId);
+          return;
+        }
+        alert(`Analysis Error: ${err}`);
         closeProc();
       }
     };
@@ -486,12 +496,19 @@
   async function pollJob(jobId) {
     try {
         const res = await fetch(`${API_URL}/api/jobs/${jobId}`);
+        if (res.status === 404) {
+          $('p-stage').textContent = 'JOB NOT ON THIS SERVER — RETRYING…';
+          setTimeout(() => pollJob(jobId), 2000);
+          return;
+        }
         const data = await res.json();
         updateProcUI(data.progress, data.stage);
         if (data.status === 'completed') finishProc(jobId);
-        else if (data.status === 'failed') { alert('Job failed'); closeProc(); }
-        else setTimeout(() => pollJob(jobId), 3000);
-    } catch {}
+        else if (data.status === 'failed') { alert(`Job failed: ${data.error || 'unknown'}`); closeProc(); }
+        else setTimeout(() => pollJob(jobId), 2000);
+    } catch {
+        setTimeout(() => pollJob(jobId), 3000);
+    }
   }
 
   // -- JOB HISTORY --

@@ -32,6 +32,12 @@ Use **Heroku Container** (`heroku.yml` at repo root → `Dockerfile.heroku`), no
 **Recommended:** API on Heroku + UI on **Vercel** (free, easier).  
 **Minimum dyno for API:** `standard-2x` or `performance-m` (ML needs RAM; 512MB will OOM).
 
+**Web dynos:** Use exactly **one** web dyno or uploads/WebSockets hit different servers and you see `Job 'xxxxxxxx' not found`:
+
+```bash
+heroku ps:scale web=1 -a YOUR_APP
+```
+
 ---
 
 ## One-time setup (API app)
