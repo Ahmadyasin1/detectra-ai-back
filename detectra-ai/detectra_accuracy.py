@@ -48,9 +48,10 @@ except Exception:
     _TORCH_AVAILABLE = False
 
 try:
-    import cv2  # noqa: F401
+    from detectra_cv2 import cv2  # noqa: F401
     _CV2_AVAILABLE = True
 except Exception:
+    cv2 = None  # type: ignore[assignment,misc]
     _CV2_AVAILABLE = False
 
 
@@ -642,9 +643,8 @@ class IdentityTracker:
         return best_pid, best_score
 
     def _compute_hist(self, rec: dict[str, Any]) -> np.ndarray | None:
-        if not _CV2_AVAILABLE:
+        if not _CV2_AVAILABLE or cv2 is None:
             return None
-        import cv2
         frame = rec.get("frame")
         crop = rec.get("crop")
         mask = rec.get("mask")
@@ -683,10 +683,9 @@ def _hist_similarity(a: np.ndarray, b: np.ndarray) -> float:
     """Bhattacharyya similarity normalised to [0, 1] (higher is more similar)."""
     if a is None or b is None or a.shape != b.shape:
         return 0.0
-    if not _CV2_AVAILABLE:
+    if not _CV2_AVAILABLE or cv2 is None:
         diff = float(np.linalg.norm(a - b))
         return max(0.0, 1.0 - diff)
-    import cv2
     dist = cv2.compareHist(a.astype(np.float32), b.astype(np.float32),
                             cv2.HISTCMP_BHATTACHARYYA)
     return max(0.0, 1.0 - float(dist))

@@ -102,6 +102,7 @@ UPLOAD_DIR      = Path(os.getenv("UPLOAD_DIR", str(_DATA_ROOT / "uploads")))
 OUTPUT_DIR_API  = Path(os.getenv("OUTPUT_DIR", str(_DATA_ROOT / "analysis_output")))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR_API.mkdir(parents=True, exist_ok=True)
+os.environ.setdefault("OUTPUT_DIR", str(OUTPUT_DIR_API))
 
 # Supabase JWT verification (optional — set in .env for production security)
 # Find it at: Supabase Dashboard → Project Settings → API → JWT Settings → JWT Secret
@@ -768,7 +769,7 @@ def _run_analysis_worker(job_id: str):
                 align_audio_events_with_speech,
                 classify_audio,
             )
-            import cv2
+            from detectra_cv2 import cv2
 
             progress(9.0, "reading_video")
             cap = cv2.VideoCapture(str(video_path))
@@ -880,6 +881,26 @@ def _run_analysis_worker(job_id: str):
         traceback.print_exc()
 
 
+def _verify_opencv_for_deploy() -> None:
+    """Log OpenCV package health on Heroku (libGL errors = GUI opencv-python wheel)."""
+    if not (os.getenv("DYNO") or os.getenv("DETECTRA_HEADLESS", "").strip().lower() in ("1", "true", "yes")):
+        return
+    try:
+        import importlib.metadata as im
+        names = {d.metadata["Name"].lower() for d in im.distributions()}
+        if "opencv-python" in names:
+            print("  [FATAL] opencv-python (GUI) is installed — analysis will fail with libGL.so.1")
+            print("  Fix: bin/post_compile + heroku builds:cache:purge + redeploy")
+        elif "opencv-python-headless" not in names:
+            print("  [WARN] opencv-python-headless not found in installed packages")
+        from detectra_cv2 import cv2
+        import numpy as np
+        cv2.cvtColor(np.zeros((4, 4, 3), dtype=np.uint8), cv2.COLOR_BGR2GRAY)
+        print(f"  [INIT] OpenCV OK: {cv2.__version__}")
+    except (OSError, RuntimeError) as exc:
+        print(f"  [FATAL] OpenCV import failed: {exc}")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # FastAPI application
 # ══════════════════════════════════════════════════════════════════════════════
@@ -888,6 +909,7 @@ def _run_analysis_worker(job_id: str):
 async def lifespan(_app: FastAPI):
     global _loop
     _loop = asyncio.get_running_loop()
+    _verify_opencv_for_deploy()
     _load_jobs()
     print(f"  [DB] Jobs loaded: {len(_jobs)} from {JOBS_DB}")
     print(f"  [DB] Upload dir: {UPLOAD_DIR} | Supabase backend: {_supabase_enabled()}")
@@ -922,6 +944,20 @@ if OUTPUT_DIR_API.exists():
     app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR_API)), name="outputs")
 
 
+def _opencv_health() -> str:
+    try:
+        import importlib.metadata as im
+        names = {d.metadata["Name"].lower() for d in im.distributions()}
+        if "opencv-python" in names:
+            return "gui_wheel_present"
+        from detectra_cv2 import cv2
+        import numpy as np
+        cv2.cvtColor(np.zeros((4, 4, 3), dtype=np.uint8), cv2.COLOR_BGR2GRAY)
+        return f"ok_{cv2.__version__}"
+    except (OSError, RuntimeError) as exc:
+        return f"error_{exc}"
+
+
 # ── Health ─────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -932,8 +968,13 @@ async def health():
         "version": "4.1.0-professional",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "models_loaded": _analyzer is not None,
+        "opencv": _opencv_health(),
         "active_jobs": len(active_jobs),
         "total_jobs": len(_jobs),
+        "jobs_db": str(JOBS_DB),
+        "upload_dir": str(UPLOAD_DIR),
+        "output_dir": str(OUTPUT_DIR_API),
+        "on_heroku": bool(os.getenv("DYNO")),
     }
 
 

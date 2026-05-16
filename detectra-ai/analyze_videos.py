@@ -45,12 +45,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Headless servers (Heroku sets DYNO) — before importing cv2
-if os.getenv("DYNO") or os.getenv("DETECTRA_HEADLESS", "").strip().lower() in ("1", "true", "yes"):
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    os.environ.setdefault("MPLBACKEND", "Agg")
-
-import cv2
+from detectra_cv2 import cv2
 import numpy as np
 
 # ── UTF-8 on Windows ──────────────────────────────────────────────────────────
@@ -69,7 +64,7 @@ except AttributeError:
 # ─── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR  = Path(__file__).parent
 TEST_VIDEOS = SCRIPT_DIR.parent / "test videos"
-OUTPUT_DIR  = SCRIPT_DIR / "analysis_output"
+OUTPUT_DIR  = Path(os.getenv("OUTPUT_DIR", str(SCRIPT_DIR / "analysis_output")))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ─── Config ───────────────────────────────────────────────────────────────────

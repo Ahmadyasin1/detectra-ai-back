@@ -40,6 +40,29 @@ heroku ps:scale web=1 -a YOUR_APP
 
 ---
 
+## Deploy checklist (Python buildpack — repo root)
+
+Commit these files, then redeploy:
+
+| File | Purpose |
+|------|---------|
+| `api_server.py`, `analyze_videos.py`, `detectra_accuracy.py`, `detectra_cv2.py`, `dashboard.html` | App |
+| `requirements.txt`, `requirements.heroku.txt` | Dependencies (no GUI OpenCV) |
+| `Procfile` | `web: bash bin/start` |
+| `bin/post_compile` | Removes `opencv-python` after pip install |
+| `bin/start` | Startup OpenCV check + uvicorn |
+| `Aptfile`, `app.json` | ffmpeg + libGL + buildpack order |
+
+```bash
+heroku builds:cache:purge -a YOUR_APP
+git push heroku main   # or GitHub auto-deploy
+heroku ps:scale web=1 -a YOUR_APP
+```
+
+After deploy, `/health` must show `"opencv": "ok_..."` (not `gui_wheel_present`).
+
+---
+
 ## One-time setup (API app)
 
 ### 1. Set stack to Container
@@ -70,7 +93,28 @@ Deploy branch **`main`**. At **repo root** you must have:
 
 Do **not** set `PORT` — Heroku sets it automatically.
 
-### 4. Deploy
+### 4. Buildpacks (required for `libGL` / ffmpeg)
+
+Heroku Dashboard → **Settings** → **Buildpacks** (order matters):
+
+1. `https://github.com/heroku/heroku-buildpack-apt`
+2. `heroku/python`
+
+Or CLI:
+
+```bash
+heroku buildpacks:clear -a YOUR_APP
+heroku buildpacks:add https://github.com/heroku/heroku-buildpack-apt -a YOUR_APP
+heroku buildpacks:add heroku/python -a YOUR_APP
+```
+
+After changing OpenCV fixes, purge the build cache once:
+
+```bash
+heroku builds:cache:purge -a YOUR_APP
+```
+
+### 5. Deploy
 
 Push to GitHub (connected branch) or:
 
@@ -114,6 +158,7 @@ VITE_API_URL=https://detectra-ai.herokuapp.com
 | App crashed (H14/H10) | Increase dyno size; check `heroku logs --tail` |
 | R14 Memory quota | Upgrade to **standard-2x** or higher |
 | Request timeout | Video jobs are long; Heroku has 30s HTTP timeout on router — use async jobs + polling (already in API) |
+| `libGL.so.1: cannot open shared object file` | (1) Buildpacks: **Apt** then **Python** — see `app.json`. (2) Commit **`bin/post_compile`** at repo root. (3) Purge cache: `heroku builds:cache:purge -a YOUR_APP` then redeploy. Build log must show `OpenCV OK (headless)`. (4) Or use **Container** stack + `heroku.yml` |
 
 ---
 
