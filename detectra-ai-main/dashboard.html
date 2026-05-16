@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detectra AI | Professional Surveillance Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+  :root {
+    --brand-primary: #00e5a0;
+    --brand-secondary: #00c890;
+    --bg-main: #05070a;
+    --bg-card: #0d1117;
+    --bg-hover: #161b22;
+    --border: #21262d;
+    --text-main: #e6edf3;
+    --text-muted: #8b949e;
+  }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    overflow-x: hidden;
+  }
+  .glass {
+    background: rgba(13, 17, 23, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+  }
+  .brand-gradient {
+    background: linear-gradient(135deg, #00e5a0 0%, #00c2ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .brand-bg-gradient {
+    background: linear-gradient(135deg, #00e5a0 0%, #00c2ff 100%);
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .custom-scroll::-webkit-scrollbar { width: 4px; }
+  .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+  .custom-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  .scanline {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 2px;
+    background: rgba(0, 229, 160, 0.2);
+    box-shadow: 0 0 10px rgba(0, 229, 160, 0.5);
+    animation: scanline 4s linear infinite;
+    pointer-events: none;
+    z-index: 10;
+  }
+</style>
+</head>
+<body class="custom-scroll">
+
+<div class="min-h-screen flex flex-col">
+  <!-- Top Navigation -->
+  <header class="h-14 glass sticky top-0 z-50 flex items-center px-6 gap-4 border-b">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg brand-bg-gradient flex items-center justify-center shadow-lg shadow-emerald-500/20">
+        <i data-lucide="shield" class="w-5 h-5 text-slate-900"></i>
+      </div>
+      <h1 class="text-xl font-extrabold tracking-tight">Detectra<span class="text-emerald-400">AI</span> <span class="text-xs font-medium text-slate-500 ml-1">v4.1 Pro</span></h1>
+    </div>
+    
+    <div class="h-6 w-px bg-slate-800 mx-2"></div>
+    
+    <div class="flex items-center gap-3">
+      <div id="conn-status" class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/50 border border-slate-800">
+        <span id="conn-dot" class="w-2 h-2 rounded-full bg-slate-600"></span>
+        <span id="conn-text" class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Connecting</span>
+      </div>
+    </div>
+
+    <div class="ml-auto flex items-center gap-4">
+      <div class="hidden md:flex items-center gap-1.5 text-xs text-slate-400">
+        <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-500"></i>
+        <span id="backend-status">Initializing…</span>
+      </div>
+      <div class="text-xs font-mono text-slate-500" id="server-time">00:00:00</div>
+      <button onclick="refreshJobs()" class="p-2 rounded-lg hover:bg-slate-800 transition-colors text-slate-400 hover:text-white" title="Refresh Dashboard">
+        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="flex-1 flex overflow-hidden">
+    <!-- Left Sidebar: Controls & History -->
+    <aside class="w-80 border-r border-slate-800 flex flex-col bg-slate-950/20">
+      <!-- Upload Section -->
+      <div class="p-5 border-b border-slate-800 space-y-4">
+        <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+          <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+          Ingest Evidence
+        </h3>
+        <label for="file-input" class="group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-800 rounded-xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all cursor-pointer">
+          <input type="file" id="file-input" class="hidden" accept="video/*" onchange="handleFileSelect(this)">
+          <i data-lucide="film" class="w-8 h-8 text-slate-600 group-hover:text-emerald-400 mb-2 transition-colors"></i>
+          <span class="text-xs font-medium text-slate-300">Drop video or browse</span>
+          <span class="text-[10px] text-slate-500 mt-1">MP4, AVI, MOV up to 500MB</span>
+        </label>
+        <div id="file-info" class="hidden animate-in fade-in slide-in-from-top-2">
+          <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-lg border border-slate-800">
+            <i data-lucide="video" class="w-4 h-4 text-emerald-400"></i>
+            <span class="text-xs truncate flex-1 font-medium" id="file-name">filename.mp4</span>
+            <button onclick="clearFile()" class="p-1 text-slate-500 hover:text-white">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <button id="upload-btn" onclick="startUpload()" class="w-full mt-3 py-2.5 rounded-lg brand-bg-gradient text-slate-900 font-bold text-sm shadow-lg shadow-emerald-500/20 hover:opacity-90 active:scale-95 transition-all">
+            EXECUTE ANALYSIS
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Stream Section -->
+      <div class="p-5 border-b border-slate-800 space-y-4">
+        <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+          <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+          Active Surveillance
+        </h3>
+        <div class="flex gap-2">
+          <input type="text" id="stream-src" value="0" placeholder="Source (0 or URL)" class="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500/50 outline-none text-slate-300">
+          <button id="live-btn" onclick="toggleLive()" class="px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-xs hover:bg-emerald-500/20 transition-all flex items-center gap-1.5">
+            <i data-lucide="play" class="w-3 h-3"></i> LIVE
+          </button>
+        </div>
+      </div>
+
+      <!-- Historical Records -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="p-5 pb-3">
+          <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i>
+            Archive Jobs
+          </h3>
+        </div>
+        <div id="jobs-list" class="flex-1 flex flex-col gap-2 p-5 pt-0 overflow-y-auto custom-scroll">
+          <!-- Placeholder -->
+          <div class="text-center py-10 opacity-30">
+            <i data-lucide="database" class="w-8 h-8 mx-auto mb-2"></i>
+            <p class="text-xs font-mono">Archive Empty</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Stage: Analytics & Feed -->
+    <section class="flex-1 flex flex-col bg-black relative">
+      <!-- Main Content Area -->
+      <div class="flex-1 overflow-y-auto custom-scroll p-6 space-y-6">
+        
+        <!-- Live Preview Stage -->
+        <div id="live-stage" class="hidden animate-in zoom-in-95 duration-300">
+          <div class="relative rounded-2xl border-2 border-slate-800 bg-slate-900 overflow-hidden shadow-2xl">
+            <div class="scanline"></div>
+            <img id="live-canvas" class="w-full h-auto min-h-[300px] object-contain" alt="SURVEILLANCE FEED">
+            <div class="absolute top-4 left-4 flex gap-3">
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-red-600/90 rounded-md shadow-lg animate-pulse">
+                <span class="w-2 h-2 rounded-full bg-white"></span>
+                <span class="text-[10px] font-black uppercase text-white tracking-widest">LIVE FEED</span>
+              </div>
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-md border border-white/10">
+                <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span id="live-p-count" class="text-xs font-mono font-bold">—</span>
+              </div>
+            </div>
+            <div class="absolute bottom-4 left-4 right-4 flex justify-between items-end">
+              <div class="space-y-1">
+                <div id="live-action-tag" class="px-2 py-0.5 bg-emerald-500 text-black text-[10px] font-black uppercase rounded">IDLE</div>
+                <div id="live-meta" class="text-[10px] font-mono text-white/70 drop-shadow-md">CAM_01 // MULTIMODAL_FUSION_ACTIVE</div>
+              </div>
+              <div id="live-alerts-hud" class="flex flex-col gap-2 items-end"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Dashboard -->
+        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div class="p-4 glass rounded-2xl flex flex-col items-center justify-center text-center group cursor-default hover:border-emerald-500/30 transition-all">
+            <span class="text-3xl font-black brand-gradient mono" id="m-persons">00</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Unique Tracks</span>
+          </div>
+          <div class="p-4 glass rounded-2xl flex flex-col items-center justify-center text-center group cursor-default hover:border-red-500/30 transition-all">
+            <span class="text-3xl font-black text-rose-500 mono" id="m-events">00</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Surv Events</span>
+          </div>
+          <div class="p-4 glass rounded-2xl flex flex-col items-center justify-center text-center group cursor-default hover:border-orange-500/30 transition-all">
+            <span class="text-lg font-black text-orange-400 uppercase tracking-tighter" id="m-risk">STABLE</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Risk Index</span>
+          </div>
+          <div class="p-4 glass rounded-2xl flex flex-col items-center justify-center text-center group cursor-default hover:border-blue-500/30 transition-all">
+            <span class="text-3xl font-black text-blue-400 mono" id="m-speech">00</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Audio Cues</span>
+          </div>
+          <div class="p-4 glass rounded-2xl flex flex-col items-center justify-center text-center group cursor-default hover:border-emerald-500/30 transition-all col-span-2 md:col-span-1">
+            <span class="text-xs font-bold text-emerald-400" id="m-status">—</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">System State</span>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="p-6 glass rounded-2xl space-y-4">
+            <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> Track Density
+            </h4>
+            <div class="h-48"><canvas id="density-chart"></canvas></div>
+          </div>
+          <div class="p-6 glass rounded-2xl space-y-4">
+            <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+              <i data-lucide="brain" class="w-3.5 h-3.5"></i> Anomaly Fusion Scoring
+            </h4>
+            <div class="h-48"><canvas id="anomaly-chart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Event Ledger -->
+        <div class="glass rounded-2xl overflow-hidden border border-slate-800">
+          <div class="px-6 py-4 flex items-center justify-between border-b border-slate-800">
+            <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Security Occurrence Ledger</h4>
+            <span id="ledger-count" class="px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] rounded-full font-mono">0 ENTRIES</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-separate border-spacing-0">
+              <thead>
+                <tr class="bg-slate-900/50">
+                  <th class="px-6 py-3 border-b border-slate-800 text-slate-500 uppercase font-bold tracking-wider">Timestamp</th>
+                  <th class="px-6 py-3 border-b border-slate-800 text-slate-500 uppercase font-bold tracking-wider">Severity</th>
+                  <th class="px-6 py-3 border-b border-slate-800 text-slate-500 uppercase font-bold tracking-wider">Classification</th>
+                  <th class="px-6 py-3 border-b border-slate-800 text-slate-500 uppercase font-bold tracking-wider">Contextual Description</th>
+                  <th class="px-6 py-3 border-b border-slate-800 text-slate-500 uppercase font-bold tracking-wider text-right">Conf %</th>
+                </tr>
+              </thead>
+              <tbody id="event-ledger-body" class="divide-y divide-slate-800/50">
+                <tr>
+                  <td colspan="5" class="py-20 text-center text-slate-500 italic">Load a completed job to view evidence ledger.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Primary UX: use the Vite app (Results page) for translation + RAG chat -->
+        <div class="p-6 glass rounded-2xl border border-slate-800/80">
+          <h4 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2 mb-3">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Full intelligence workspace
+          </h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Transcript translation and the RAG investigator run in the production web app on the <strong class="text-slate-300">Analyze → Results</strong> screen (Speech tab + Ask AI tab), backed by the same API as <code class="mono text-emerald-400/90">/api/jobs/{id}/translate</code> and <code class="mono text-emerald-400/90">/api/jobs/{id}/ask</code>.
+            This standalone dashboard stays focused on metrics, charts, and the evidence ledger.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer Action Header -->
+      <div id="job-header-overlay" class="hidden absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black via-black/90 to-transparent flex items-end justify-between border-t border-slate-800 animate-in slide-in-from-bottom-5">
+        <div class="max-w-xl">
+          <h2 class="text-2xl font-black truncate" id="h-job-title">Job Title</h2>
+          <p class="text-slate-400 text-xs mt-1" id="h-job-meta">Analysis Summary Metadata</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="downloadReport()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold transition-all">
+            <i data-lucide="file-text" class="w-4 h-4"></i> EXPORT REPORT
+          </button>
+          <button onclick="downloadVideo()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all shadow-xl shadow-emerald-500/20">
+            <i data-lucide="download" class="w-4 h-4"></i> RETRIEVE FOOTAGE
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Live Alerts Feed -->
+    <aside class="w-72 border-l border-slate-800 flex flex-col bg-slate-950/40">
+      <div class="p-5 border-b border-slate-800 bg-slate-900/40 flex items-center justify-between">
+        <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          Intel Log
+        </h3>
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      </div>
+      <div id="alert-feed" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scroll">
+        <div class="text-center py-20 opacity-20">
+          <i data-lucide="bell" class="w-8 h-8 mx-auto mb-2"></i>
+          <p class="text-[10px] font-bold uppercase tracking-widest">Listening for insights</p>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- PROCESSOR OVERLAY (INITIALIZING) -->
+<div id="processing-overlay" class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 sm:p-20 bg-slate-950/90 backdrop-blur-2xl">
+  <div class="max-w-md w-full glass p-8 rounded-3xl border-2 border-emerald-500/30 text-center space-y-6 shadow-2xl">
+    <div class="relative w-20 h-20 mx-auto">
+      <div class="absolute inset-0 rounded-2xl border-4 border-emerald-500/10"></div>
+      <div class="absolute inset-0 rounded-2xl border-t-4 border-emerald-500 animate-spin"></div>
+      <div class="absolute inset-4 rounded-xl brand-bg-gradient opacity-20 animate-pulse"></div>
+      <i data-lucide="cpu" class="absolute inset-0 m-auto w-8 h-8 text-emerald-400"></i>
+    </div>
+    
+    <div>
+      <h2 class="text-2xl font-black tracking-tight" id="p-title">PROCESSING EVIDENCE</h2>
+      <p class="text-slate-500 font-mono text-[10px] uppercase mt-1 tracking-widest" id="p-stage">INITIALIZING ENGINES…</p>
+    </div>
+    
+    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+      <div id="p-bar" class="h-full brand-bg-gradient transition-all duration-700" style="width: 5%"></div>
+    </div>
+    
+    <div class="flex justify-between items-center text-[10px] font-mono font-bold tracking-widest text-slate-400 uppercase">
+       <span id="p-pct">05% COMPLETED</span>
+       <span id="p-timer">ELAPSED: 00s</span>
+    </div>
+
+    <div class="p-4 bg-slate-900/50 rounded-2xl border border-white/5 text-[10px] text-slate-400 text-left leading-relaxed">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-500"></i>
+        <span class="font-bold text-white uppercase tracking-wider">Analysis Info</span>
+      </div>
+      YOLOv8 Small Seg + Pose + ByteTrack + Whisper Fusion Engine. CPU-Optimized Inference enabled.
+    </div>
+  </div>
+</div>
+
+<script>
+  // -- DATA STATE --
+  const API_URL = window.location.origin;
+  let currentJobId = null;
+  let jobWs = null;
+  let liveWs = null;
+  let isLive = false;
+  let charts = { density: null, anomaly: null };
+  let procStart = null;
+  let procInterval = null;
+  let currentResult = null;
+
+  // -- UTILS --
+  const $ = (id) => document.getElementById(id);
+  const fmtTime = (s) => {
+    const mins = Math.floor(s / 60);
+    const secs = Math.floor(s % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // -- HEALTH PROBE (run before Lucide so CDN/adblock issues do not leave UI stuck on "Connecting")
+  async function checkServerHealth() {
+    try {
+      const res = await fetch(`${API_URL}/health`);
+      if (res.ok) {
+        const data = await res.json();
+        $('conn-dot').className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+        $('conn-text').textContent = 'API ONLINE';
+        $('conn-text').className = 'text-[10px] font-bold uppercase tracking-wider text-emerald-400';
+        $('backend-status').textContent = data.models_loaded ? 'AI MODELS READY' : 'MODELS INITIALIZING…';
+      } else throw new Error();
+    } catch {
+      $('conn-dot').className = 'w-2 h-2 rounded-full bg-slate-700';
+      $('conn-text').textContent = 'API OFFLINE';
+      $('conn-text').className = 'text-[10px] font-bold uppercase tracking-wider text-slate-500';
+      $('backend-status').textContent = 'WAITING FOR ENGINE…';
+    }
+  }
+  setInterval(checkServerHealth, 5000);
+  checkServerHealth();
+
+  try {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) {
+    console.warn('Lucide icons failed:', e);
+  }
+
+  // -- SYSTEM CLOCK --
+  setInterval(() => {
+    $('server-time').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+  }, 1000);
+
+  // -- FILE HANDLING --
+  function handleFileSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    $('file-name').textContent = file.name;
+    $('file-info').classList.remove('hidden');
+  }
+
+  function clearFile() {
+    $('file-input').value = '';
+    $('file-info').classList.add('hidden');
+  }
+
+  async function startUpload() {
+    const file = $('file-input').files[0];
+    if (!file) return;
+    
+    const btn = $('upload-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> UPLOADING...</span>';
+    lucide.createIcons();
+
+    const fd = new FormData();
+    fd.append('file', file);
+    
+    try {
+      const res = await fetch(`${API_URL}/api/analyze`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Upload failed');
+      
+      initProcessing(data.job_id);
+    } catch (err) {
+      alert(`Critical System Error: ${err.message}`);
+      btn.disabled = false;
+      btn.textContent = 'EXECUTE ANALYSIS';
+    }
+  }
+
+  // -- PROCESSING OVERLAY --
+  function initProcessing(jobId) {
+    $('processing-overlay').classList.remove('hidden');
+    procStart = Date.now();
+    currentJobId = jobId;
+    
+    if (procInterval) clearInterval(procInterval);
+    procInterval = setInterval(() => {
+      $('p-timer').textContent = `ELAPSED: ${Math.floor((Date.now() - procStart) / 1000)}s`;
+    }, 1000);
+
+    connectSocket(jobId);
+  }
+
+  function connectSocket(jobId) {
+    if (jobWs) jobWs.close();
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    jobWs = new WebSocket(`${proto}//${window.location.host}/ws/${jobId}`);
+    
+    jobWs.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'progress') {
+        updateProcUI(msg.progress, msg.stage);
+      } else if (msg.type === 'completed' || msg.status === 'completed') {
+        finishProc(jobId);
+      } else if (msg.type === 'error') {
+        alert(`Analysis Error: ${msg.error}`);
+        closeProc();
+      }
+    };
+    
+    jobWs.onerror = () => {
+        $('p-stage').textContent = 'WEBSOCKET FAILURE // FALLING BACK TO POLLING…';
+        pollJob(jobId);
+    };
+  }
+
+  function updateProcUI(pct, stage) {
+    $('p-bar').style.width = `${pct}%`;
+    $('p-pct').textContent = `${Math.round(pct).toString().padStart(2, '0')}% COMPLETED`;
+    $('p-stage').textContent = stage.replace(/_/g, ' ').toUpperCase() + '...';
+  }
+
+  async function finishProc(jobId) {
+    updateProcUI(100, 'SUCCESS');
+    setTimeout(() => {
+        closeProc();
+        refreshJobs();
+        loadJob(jobId);
+    }, 1000);
+  }
+
+  function closeProc() {
+    $('processing-overlay').classList.add('hidden');
+    if (procInterval) clearInterval(procInterval);
+    if (jobWs) jobWs.close();
+    $('upload-btn').disabled = false;
+    $('upload-btn').textContent = 'EXECUTE ANALYSIS';
+    clearFile();
+  }
+
+  async function pollJob(jobId) {
+    try {
+        const res = await fetch(`${API_URL}/api/jobs/${jobId}`);
+        const data = await res.json();
+        updateProcUI(data.progress, data.stage);
+        if (data.status === 'completed') finishProc(jobId);
+        else if (data.status === 'failed') { alert('Job failed'); closeProc(); }
+        else setTimeout(() => pollJob(jobId), 3000);
+    } catch {}
+  }
+
+  // -- JOB HISTORY --
+  async function refreshJobs() {
+    try {
+      const res = await fetch(`${API_URL}/api/jobs`);
+      const list = await res.json();
+      renderJobList(list);
+    } catch (err) { console.warn('Jobs list fetch failed'); }
+  }
+
+  function renderJobList(list) {
+    const cont = $('jobs-list');
+    if (!list.length) return;
+    
+    cont.innerHTML = list.map(j => `
+      <div onclick="loadJob('${j.job_id}')" class="p-3 bg-slate-900 border border-slate-800 rounded-xl cursor-pointer hover:border-emerald-500/40 transition-all group ${j.job_id === currentJobId ? 'ring-1 ring-emerald-500 border-emerald-500' : ''}">
+        <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-[10px] font-bold text-slate-500 truncate group-hover:text-slate-300 transition-colors">${j.video_name}</span>
+            <span class="text-[8px] font-mono text-slate-600">${j.job_id}</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${j.status==='completed' ? 'bg-emerald-500/10 text-emerald-500' : j.status==='failed'?'bg-red-500/10 text-red-500':'bg-blue-500/10 text-blue-500'}">${j.status}</span>
+            <div class="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full brand-bg-gradient" style="width: ${j.status==='completed'?100:j.progress}%"></div>
+            </div>
+            <span class="text-[9px] font-mono text-slate-500">${j.processing_s}s</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // -- JOB VIEW DATA --
+  async function loadJob(jobId) {
+    currentJobId = jobId;
+    refreshJobListActive();
+    
+    $('m-status').textContent = 'FETCHING DATA…';
+    $('job-header-overlay').classList.add('hidden');
+    
+    try {
+        const res = await fetch(`${API_URL}/api/jobs/${jobId}/result`);
+        const result = await res.json();
+        
+        const statusRes = await fetch(`${API_URL}/api/jobs/${jobId}`);
+        const status = await statusRes.json();
+        
+        renderJobData(result, status);
+    } catch (err) {
+        $('m-status').textContent = 'LOAD ERROR';
+    }
+  }
+
+  function renderJobData(r, s) {
+    currentResult = r;
+    $('m-persons').textContent = (r.unique_track_ids || []).length.toString().padStart(2, '0');
+    $('m-events').textContent = (r.surveillance_events || []).length.toString().padStart(2, '0');
+    $('m-speech').textContent = (r.speech_segments || []).filter(v => !v.is_noise).length.toString().padStart(2, '0');
+    $('m-status').textContent = 'COMPLETED';
+    
+    const risk = r.risk_level || 'LOW';
+    $('m-risk').textContent = risk;
+    $('m-risk').className = `text-lg font-black uppercase tracking-tighter ${risk === 'CRITICAL' ? 'text-rose-500' : risk === 'HIGH' ? 'text-orange-400' : 'text-emerald-400'}`;
+
+    // Update Header
+    $('h-job-title').textContent = r.video_name || s.video_name;
+    const dur = Math.floor(r.duration_s || 0);
+    $('h-job-meta').textContent = `${dur}s Footage // ${r.height}p @ ${Math.round(r.fps)}fps // ${r.surveillance_events.length} Surveillance Hits`;
+    $('job-header-overlay').classList.remove('hidden');
+
+    // Charts (API returns sampled frame_analytics; legacy frame_results stripped)
+    const densityFrames = (r.frame_analytics && r.frame_analytics.length)
+      ? r.frame_analytics.map(p => ({ timestamp_s: p.t, person_count: p.person_count }))
+      : (r.frame_results || []);
+    initDensityChart(densityFrames);
+    initAnomalyChart(r.fusion_insights || []);
+
+    // Ledger
+    renderLedger(r.surveillance_events || []);
+    
+    // Clear feed and push critical ones
+    $('alert-feed').innerHTML = '';
+    r.surveillance_events.filter(e => e.severity === 'critical' || e.severity === 'high').forEach(e => pushAlert(e));
+  }
+
+  function initDensityChart(frames) {
+    const ctx = $('density-chart').getContext('2d');
+    if (charts.density) charts.density.destroy();
+    
+    charts.density = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: frames.map(f => fmtTime(f.timestamp_s)),
+            datasets: [{
+                label: 'Tracks',
+                data: frames.map(f => f.person_count),
+                borderColor: '#00e5a0',
+                backgroundColor: 'rgba(0, 229, 160, 0.05)',
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: false },
+                y: { min: 0, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6e7681', font: { size: 9 } } }
+            }
+        }
+    });
+  }
+
+  function initAnomalyChart(ins) {
+    const ctx = $('anomaly-chart').getContext('2d');
+    if (charts.anomaly) charts.anomaly.destroy();
+    
+    charts.anomaly = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ins.map(i => fmtTime(i.window_start_s)),
+            datasets: [{
+                label: 'Anomaly Score',
+                data: ins.map(i => i.anomaly_score),
+                backgroundColor: ins.map(i => i.anomaly_score > 0.65 ? 'rgba(244, 63, 94, 0.6)' : i.anomaly_score > 0.4 ? 'rgba(251, 146, 60, 0.5)' : 'rgba(16, 185, 129, 0.3)'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { display: true, grid: { display: false }, ticks: { color: '#6e7681', font: { size: 8 } } },
+                y: { min: 0, max: 1, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#6e7681', font: { size: 9 } } }
+            }
+        }
+    });
+  }
+
+  function renderLedger(events) {
+    const body = $('event-ledger-body');
+    if (!events.length) {
+        body.innerHTML = '<tr><td colspan="5" class="py-10 text-center opacity-30 italic">No anomalies detected in this footage.</td></tr>';
+        return;
+    }
+    
+    $('ledger-count').textContent = `${events.length} ENTRIES`;
+    body.innerHTML = events.map(e => `
+        <tr class="hover:bg-white/5 transition-colors group">
+            <td class="px-6 py-4 font-mono text-emerald-400 font-bold">${fmtTime(e.timestamp_s)}</td>
+            <td class="px-6 py-4">
+                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${e.severity==='critical'?'bg-rose-500/20 text-rose-500':'bg-orange-500/20 text-orange-400'}">${e.severity}</span>
+            </td>
+            <td class="px-6 py-4 font-bold text-slate-200 capitalize">${e.event_type.replace(/_/g, ' ')}</td>
+            <td class="px-6 py-4 text-slate-400 group-hover:text-slate-200 transition-colors">${e.description}</td>
+            <td class="px-6 py-4 text-right font-mono text-slate-500">${Math.round(e.confidence*100)}%</td>
+        </tr>
+    `).join('');
+  }
+
+  function pushAlert(e, liveTs = null) {
+    const cont = $('alert-feed');
+    const item = document.createElement('div');
+    const isCrit = e.severity === 'critical';
+    item.className = `p-4 rounded-2xl border ${isCrit ? 'bg-rose-500/5 border-rose-500/20' : 'bg-orange-500/5 border-orange-500/20'} animate-in slide-in-from-right-5 duration-300`;
+    item.innerHTML = `
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-[9px] font-black uppercase tracking-[0.2em] ${isCrit ? 'text-rose-500' : 'text-orange-400'}">${e.event_type.replace(/_/g, ' ')}</span>
+            <span class="text-[9px] font-mono text-slate-600">${liveTs ? liveTs+'s' : fmtTime(e.timestamp_s)}</span>
+        </div>
+        <p class="text-[11px] text-slate-300 leading-snug">${e.description}</p>
+    `;
+    cont.prepend(item);
+    if (cont.children.length > 20) cont.lastChild.remove();
+  }
+
+  // -- LIVE OPERATIONS --
+  async function toggleLive() {
+    if (isLive) {
+      await fetch(`${API_URL}/api/live/stop`, { method: 'DELETE' });
+      stopLive();
+    } else {
+      const src = $('stream-src').value || '0';
+      const res = await fetch(`${API_URL}/api/live/start?source=${encodeURIComponent(src)}`, { method: 'POST' });
+      if (res.ok) startLive();
+      else alert('Failed to synchronize with live stream processor.');
+    }
+  }
+
+  function startLive() {
+    isLive = true;
+    $('live-btn').innerHTML = '<i data-lucide="square" class="w-3 h-3"></i> STOP';
+    $('live-btn').className = 'px-4 py-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold text-xs hover:bg-rose-500/20 transition-all flex items-center gap-1.5';
+    $('live-stage').classList.remove('hidden');
+    lucide.createIcons();
+    connectLiveSocket();
+  }
+
+  function stopLive() {
+    isLive = false;
+    $('live-btn').innerHTML = '<i data-lucide="play" class="w-3 h-3"></i> LIVE';
+    $('live-btn').className = 'px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-xs hover:bg-emerald-500/20 transition-all flex items-center gap-1.5';
+    $('live-stage').classList.add('hidden');
+    if (liveWs) liveWs.close();
+    lucide.createIcons();
+  }
+
+  function connectLiveSocket() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    liveWs = new WebSocket(`${proto}//${window.location.host}/ws/live`);
+    liveWs.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'frame') {
+            if (msg.frame_b64) $('live-canvas').src = `data:image/jpeg;base64,${msg.frame_b64}`;
+            $('live-p-count').textContent = (msg.persons || 0).toString().padStart(2, '0');
+            $('live-action-tag').textContent = msg.action || 'IDLE';
+            msg.alerts?.forEach(a => pushAlert(a, msg.ts));
+        } else if (msg.type === 'live_stopped') {
+            stopLive();
+        }
+    };
+  }
+
+  // -- EXPORTS --
+  function downloadReport() { window.open(`${API_URL}/api/jobs/${currentJobId}/report`, '_blank'); }
+  function downloadVideo() { window.open(`${API_URL}/api/jobs/${currentJobId}/video`, '_blank'); }
+  function refreshJobListActive() { /* visual active state helper */ refreshJobs(); }
+
+  // Initial load
+  refreshJobs();
+</script>
+</body>
+</html>
