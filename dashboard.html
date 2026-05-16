@@ -359,7 +359,9 @@
         $('conn-dot').className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
         $('conn-text').textContent = 'API ONLINE';
         $('conn-text').className = 'text-[10px] font-bold uppercase tracking-wider text-emerald-400';
-        $('backend-status').textContent = data.models_loaded ? 'AI MODELS READY' : 'MODELS INITIALIZING…';
+        $('backend-status').textContent = data.models_loaded
+          ? 'AI MODELS READY'
+          : 'STANDBY — HEAVY MODELS LOAD ON FIRST JOB';
       } else throw new Error();
     } catch {
       $('conn-dot').className = 'w-2 h-2 rounded-full bg-slate-700';

@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.api.txt ./
+COPY requirements.heroku.txt ./
 RUN pip install --no-cache-dir \
     torch torchvision --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.api.txt
+    && pip install --no-cache-dir -r requirements.heroku.txt
 
 COPY api_server.py analyze_videos.py detectra_accuracy.py dashboard.html ./
 RUN mkdir -p uploads analysis_output

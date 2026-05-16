@@ -1,7 +1,11 @@
-# Heroku Python buildpack (expects this exact filename at repo root).
-# For ML/video workloads, prefer Container stack + Dockerfile.heroku (see heroku.yml).
+# Heroku Python buildpack (expects this filename at repo root).
+# Uses requirements.heroku.txt (no openai-whisper/triton) to stay under the ~900 MB slug limit.
+# Full local install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#                       && pip install -r requirements.api.txt
+#
+# Buildpack order (see app.json): heroku-buildpack-apt first so Aptfile (ffmpeg) applies.
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision
 
--r requirements.api.txt
+-r requirements.heroku.txt
