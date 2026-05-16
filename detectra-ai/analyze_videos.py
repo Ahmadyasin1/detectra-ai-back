@@ -45,6 +45,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# Headless servers (Heroku sets DYNO) — before importing cv2
+if os.getenv("DYNO") or os.getenv("DETECTRA_HEADLESS", "").strip().lower() in ("1", "true", "yes"):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault("MPLBACKEND", "Agg")
+
 import cv2
 import numpy as np
 
