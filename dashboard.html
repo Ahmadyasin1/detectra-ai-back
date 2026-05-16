@@ -350,10 +350,7 @@
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Initialize Lucide icons
-  lucide.createIcons();
-
-  // -- HEALTH PROBE --
+  // -- HEALTH PROBE (run before Lucide so CDN/adblock issues do not leave UI stuck on "Connecting")
   async function checkServerHealth() {
     try {
       const res = await fetch(`${API_URL}/health`);
@@ -373,6 +370,12 @@
   }
   setInterval(checkServerHealth, 5000);
   checkServerHealth();
+
+  try {
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) {
+    console.warn('Lucide icons failed:', e);
+  }
 
   // -- SYSTEM CLOCK --
   setInterval(() => {
