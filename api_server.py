@@ -511,6 +511,18 @@ def _load_jobs():
     except Exception as e:
         print(f"  [DB] Error loading jobs: {e}")
 
+
+def _resolve_job(job_id: str, *, reload_disk: bool = False) -> AnalysisJob | None:
+    """Return a job from memory, optionally reloading jobs_db.json (Heroku /tmp, dyno restarts)."""
+    job = _jobs.get(job_id)
+    if job is not None:
+        return job
+    if reload_disk:
+        _load_jobs()
+        job = _jobs.get(job_id)
+    return job
+
+
 # ── In-memory job store ───────────────────────────────────────────────────────
 _jobs:     dict[str, AnalysisJob] = {}
 _ws_conns: dict[str, list[WebSocket]] = {}   # job_id → active WebSocket connections
@@ -1100,7 +1112,7 @@ async def start_analysis_from_url(
 
 def _require_job_access(job_id: str, current_user: dict | None) -> "AnalysisJob":
     """Return job if it exists and belongs to the current user; else raise 404/403."""
-    job = _jobs.get(job_id)
+    job = _resolve_job(job_id, reload_disk=True)
     if not job:
         raise HTTPException(404, f"Job '{job_id}' not found")
     if SUPABASE_JWT_SECRET and current_user:
@@ -1400,9 +1412,20 @@ async def live_status():
 @app.websocket("/ws/{job_id}")
 async def ws_job(websocket: WebSocket, job_id: str):
     await websocket.accept()
-    job = _jobs.get(job_id)
+    # Brief retry + disk reload: upload may finish on another worker moment, or jobs_db
+    # was written just before the client opened the WebSocket (common on Heroku).
+    job = None
+    for attempt in range(6):
+        job = _resolve_job(job_id, reload_disk=(attempt > 0))
+        if job:
+            break
+        await asyncio.sleep(0.25 + attempt * 0.15)
     if not job:
-        await websocket.send_json({"type": "error", "error": f"Job '{job_id}' not found"})
+        await websocket.send_json({
+            "type": "error",
+            "error": f"Job '{job_id}' not found",
+            "hint": "If this persists, ensure only one web dyno is running (heroku ps:scale web=1).",
+        })
         await websocket.close()
         return
 
