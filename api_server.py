@@ -85,6 +85,11 @@ except ImportError:
 
 _start_time = time.perf_counter()
 
+# Headless OpenCV on Heroku (must be set before analyze_videos imports cv2)
+if os.getenv("DYNO") or os.getenv("DETECTRA_HEADLESS", "").strip().lower() in ("1", "true", "yes"):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault("MPLBACKEND", "Agg")
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 API_HOST        = os.getenv("API_HOST", "0.0.0.0")
 # Heroku sets PORT; local Docker uses API_PORT

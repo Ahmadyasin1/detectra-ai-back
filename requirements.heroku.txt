@@ -11,8 +11,9 @@ python-multipart==0.0.17
 aiofiles==24.1.0
 
 # ── Tier 1: computer vision + ML ──────────────────────────────────────────────
-ultralytics>=8.3.40
+# Install headless OpenCV FIRST; bin/post_compile removes opencv-python if ultralytics adds it.
 opencv-python-headless>=4.10.0.84
+ultralytics>=8.3.40
 
 # ── Tier 1: audio (no openai-whisper on Heroku — use faster-whisper) ───────
 librosa>=0.10.2
