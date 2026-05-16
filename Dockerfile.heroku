@@ -11,7 +11,9 @@ WORKDIR /app
 COPY requirements.heroku.txt ./
 RUN pip install --no-cache-dir \
     torch torchvision --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.heroku.txt
+    && pip install --no-cache-dir -r requirements.heroku.txt \
+    && pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true \
+    && pip install --no-cache-dir --force-reinstall opencv-python-headless==4.10.0.84
 
 COPY api_server.py analyze_videos.py detectra_accuracy.py dashboard.html ./
 RUN mkdir -p uploads analysis_output

@@ -881,6 +881,20 @@ def _run_analysis_worker(job_id: str):
         traceback.print_exc()
 
 
+def _verify_opencv_for_deploy() -> None:
+    """Fail fast on Heroku if the GUI opencv wheel slipped into the slug (libGL.so.1 errors)."""
+    if not (os.getenv("DYNO") or os.getenv("DETECTRA_HEADLESS", "").strip().lower() in ("1", "true", "yes")):
+        return
+    try:
+        import cv2
+        path = (cv2.__file__ or "").lower()
+        if "headless" not in path:
+            print(f"  [FATAL] Non-headless OpenCV in slug: {cv2.__file__}")
+            print("  Fix: commit bin/post_compile, Apt+Python buildpacks, heroku builds:cache:purge, redeploy.")
+    except OSError as exc:
+        print(f"  [FATAL] OpenCV import failed (often libGL / wrong wheel): {exc}")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # FastAPI application
 # ══════════════════════════════════════════════════════════════════════════════
@@ -889,6 +903,7 @@ def _run_analysis_worker(job_id: str):
 async def lifespan(_app: FastAPI):
     global _loop
     _loop = asyncio.get_running_loop()
+    _verify_opencv_for_deploy()
     _load_jobs()
     print(f"  [DB] Jobs loaded: {len(_jobs)} from {JOBS_DB}")
     print(f"  [DB] Upload dir: {UPLOAD_DIR} | Supabase backend: {_supabase_enabled()}")
