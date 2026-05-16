@@ -1,4 +1,0 @@
-# Frontend-only Heroku app (create app e.g. detectra-ai-web, stack: container)
-build:
-  docker:
-    web: Dockerfile.heroku
